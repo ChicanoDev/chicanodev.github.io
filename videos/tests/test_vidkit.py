@@ -152,3 +152,58 @@ class TestOffsetCues:
     def test_shifts_both_edges(self):
         shifted = vidkit.offset_cues([vidkit.Cue(1, 2, "a")], 10)
         assert (shifted[0].start, shifted[0].end, shifted[0].text) == (11, 12, "a")
+
+
+def make_episode(seconds=70, words=180, typed="ls", beat_at=0):
+    """A minimal valid (tape, voiceover) pair; override pieces to break one rule."""
+    tape = f"# @beat 0:00 Hook\nType \"{typed}\"\nSleep {seconds}s\n"
+    vo = f"## [0:00-1:10] Hook\n{' '.join(['word'] * words)}\n"
+    return tape, vo
+
+
+class TestLintEpisode:
+    def test_valid_episode_has_no_problems(self):
+        tape, vo = make_episode(seconds=70)
+        assert vidkit.lint_episode(tape, vo) == []
+
+    def test_too_short(self):
+        tape, vo = make_episode(seconds=30)
+        assert any("duration" in p for p in vidkit.lint_episode(tape, vo))
+
+    def test_too_long(self):
+        tape, vo = make_episode(seconds=120)
+        assert any("duration" in p for p in vidkit.lint_episode(tape, vo))
+
+    def test_voiceover_too_few_words(self):
+        tape, vo = make_episode(words=50)
+        assert any("words" in p for p in vidkit.lint_episode(tape, vo))
+
+    def test_voiceover_too_many_words(self):
+        tape, vo = make_episode(words=400)
+        assert any("words" in p for p in vidkit.lint_episode(tape, vo))
+
+    def test_typed_line_too_wide_for_vertical(self):
+        tape, vo = make_episode(typed="x" * 40)
+        assert any("32" in p for p in vidkit.lint_episode(tape, vo))
+
+    def test_beat_count_mismatch(self):
+        tape, vo = make_episode()
+        tape += "# @beat 0:30 Extra\n"
+        assert any("beat count" in p for p in vidkit.lint_episode(tape, vo))
+
+    def test_beat_marker_must_match_voiceover_start(self):
+        tape, vo = make_episode()
+        tape = tape.replace("# @beat 0:00", "# @beat 0:10")
+        assert any("starts at" in p for p in vidkit.lint_episode(tape, vo))
+
+    def test_beat_marker_must_match_estimated_time(self):
+        tape = 'Sleep 5s\n# @beat 0:20 Late\nSleep 60s\n'
+        vo = f"## [0:20-1:20] Late\n{' '.join(['word'] * 180)}\n"
+        assert any("estimate" in p for p in vidkit.lint_episode(tape, vo))
+
+
+class TestBuildTape:
+    def test_output_then_settings_then_body(self):
+        out = vidkit.build_tape("Set FontSize 46", "Type \"ls\"", "build/x/v.mp4")
+        assert out.splitlines()[0] == "Output build/x/v.mp4"
+        assert out.index("Set FontSize 46") < out.index('Type "ls"')

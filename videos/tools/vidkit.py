@@ -124,3 +124,45 @@ def format_srt(cues):
 
 def offset_cues(cues, offset):
     return [Cue(c.start + offset, c.end + offset, c.text) for c in cues]
+
+
+def _estimate_at_beat(tape_text, marker_line):
+    """Estimated recording time at the line index of a beat marker."""
+    return estimate_duration("\n".join(tape_text.splitlines()[:marker_line]))
+
+
+def lint_episode(tape_text, voiceover_md, min_seconds=60, max_seconds=90,
+                 min_words=140, max_words=230, max_typed=32, tolerance=1.0):
+    """Return a list of human-readable problems; empty means the episode is ready."""
+    problems = []
+
+    total = estimate_duration(tape_text)
+    if not min_seconds <= total <= max_seconds:
+        problems.append(f"duration {total:.0f}s outside {min_seconds}-{max_seconds}s")
+
+    beats = parse_voiceover(voiceover_md)
+    words = sum(len(b.text.split()) for b in beats)
+    if not min_words <= words <= max_words:
+        problems.append(f"voiceover has {words} words, want {min_words}-{max_words}")
+
+    for raw in tape_text.splitlines():
+        m = _TYPE.match(raw.strip())
+        if m and len(m.group(4)) > max_typed:
+            problems.append(f"typed line over {max_typed} chars: {m.group(4)[:40]!r}")
+
+    markers = [(n, m) for n, raw in enumerate(tape_text.splitlines())
+               if (m := _BEAT.match(raw.strip()))]
+    if len(markers) != len(beats):
+        problems.append(f"beat count: tape has {len(markers)}, voiceover has {len(beats)}")
+    for (line_no, m), beat in zip(markers, beats):
+        marked = parse_timestamp(m.group(1))
+        if abs(marked - beat.start) > tolerance:
+            problems.append(f"beat {beat.title!r}: voiceover starts at {beat.start:.0f}s, tape marker at {marked:.0f}s")
+        est = _estimate_at_beat(tape_text, line_no)
+        if abs(marked - est) > tolerance:
+            problems.append(f"beat {beat.title!r}: marker {marked:.0f}s but estimate is {est:.1f}s")
+    return problems
+
+
+def build_tape(settings_text, body_text, output_path):
+    return f"Output {output_path}\n{settings_text.rstrip()}\n\n{body_text.rstrip()}\n"
