@@ -19,15 +19,16 @@ timezone: America/Chicago
 # jekyll-seo-tag settings › https://github.com/jekyll/jekyll-seo-tag/blob/master/docs/usage.md
 # ↓ --------------------------
 
-title: Chicano Dev                          # the main title
-
-tagline: Promoting Dev/IT knowledge for Chicanos and all BIPOC folks   # it will display as the sub-title
-
-description: >-                        # used by seo meta and the atom feed
-  Promoting Dev/IT knowledge for Chicanos and all BIPOC folks
+title: ChicanoDev
+tagline: Built on experience. Shared with everyone.
+description: >-
+  Practical Linux, DevOps, programming, and AI automation tutorials.
+  Sharing decades of engineering experience to make technology more
+  accessible, especially to Chicanos, Latinx people, LGBTQIA+ folks,
+  and other underrepresented communities.
 
 # fill in the protocol & hostname for your site, e.g., 'https://username.github.io'
-url: 'https://chicanodev.github.com'
+url: 'https://chicanodev.github.io'
 
 github:
   username: chicanodev # change to your github username
