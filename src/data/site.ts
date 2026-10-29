@@ -3,7 +3,7 @@ export const site = {
   tagline: 'Built on experience. Shared with everyone.',
   description:
     'Practical Linux, DevOps, programming, and AI automation tutorials. Sharing decades of engineering experience to make technology more accessible, especially to Chicanos, Latinx people, LGBTQIA+ folks, and other underrepresented communities.',
-  url: 'https://chicanodev.github.io',
+  url: 'https://chicanodev.com',
   author: 'Dave Vigil',
   timezone: 'America/Chicago',
   github: 'https://github.com/chicanodev',

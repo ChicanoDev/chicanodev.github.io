@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const dist = path.resolve('dist');
-const site = 'https://chicanodev.github.io';
+const site = 'https://chicanodev.com';
 
 function walk(dir) {
   const files = [];
