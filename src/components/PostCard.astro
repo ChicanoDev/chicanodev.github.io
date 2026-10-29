@@ -1,6 +1,6 @@
 ---
 import type { Post } from '../lib/posts';
-import { formatDate } from '../lib/posts';
+import { formatDate, readingMinutes } from '../lib/posts';
 
 interface Props {
   post: Post;
@@ -9,16 +9,21 @@ interface Props {
 
 const { post, level = 2 } = Astro.props;
 const href = `/posts/${post.id}/`;
+const minutes = readingMinutes(post.body);
+const category = post.data.categories[0];
 ---
 
 <article class="card">
+  <p class="meta">
+    <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+    <span aria-hidden="true">·</span>
+    <span>{minutes} min read</span>
+  </p>
   {level === 3 ? (
     <h3><a href={href}>{post.data.title}</a></h3>
   ) : (
     <h2><a href={href}>{post.data.title}</a></h2>
   )}
-  <p class="meta">
-    <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
-  </p>
-  <p>{post.data.description}</p>
+  <p class="card-summary">{post.data.description}</p>
+  {category && <p class="chip-row"><span class="chip">{category}</span></p>}
 </article>

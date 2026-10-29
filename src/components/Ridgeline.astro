@@ -1,0 +1,41 @@
+---
+import { ridgeline } from '../lib/ridgeline';
+
+interface Props {
+  seed?: number;
+}
+
+const { seed = 1979 } = Astro.props;
+const { width, height, rows } = ridgeline(seed);
+// Each row is closed down to the bottom edge and filled with the page
+// background, so rows in front hide the ones behind them.
+// The stroke is a separate open path so only the pulse line is drawn, not
+// the closing edges.
+const paths = rows.map((row) => {
+  const line = `M${row.map(([x, y]) => `${x} ${y}`).join('L')}`;
+  return { line, fill: `${line}L${width} ${height}L0 ${height}Z` };
+});
+---
+
+<svg
+  class="ridgeline"
+  data-ridgeline
+  viewBox={`0 0 ${width} ${height}`}
+  aria-hidden="true"
+  focusable="false"
+>
+  <defs>
+    <linearGradient id="ridgeline-stroke" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="var(--muted)" stop-opacity="0.55"></stop>
+      <stop offset="0.38" stop-color="var(--accent)"></stop>
+      <stop offset="0.62" stop-color="var(--accent-2)"></stop>
+      <stop offset="1" stop-color="var(--muted)" stop-opacity="0.55"></stop>
+    </linearGradient>
+  </defs>
+  {paths.map(({ line, fill }) => (
+    <>
+      <path class="ridge-fill" d={fill}></path>
+      <path class="ridge-line" d={line}></path>
+    </>
+  ))}
+</svg>

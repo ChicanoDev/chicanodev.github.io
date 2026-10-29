@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="ChicanoDev">
-  <rect width="32" height="32" fill="#171821"/>
-  <rect x="5" y="18" width="4" height="8" fill="#BD93F9"/>
-  <rect x="12" y="8" width="4" height="18" fill="#F8F8F2"/>
-  <rect x="19" y="13" width="4" height="13" fill="#FF79C6"/>
-  <rect x="26" y="16" width="2" height="10" fill="#50FA7B"/>
+  <rect width="32" height="32" rx="7" fill="#282A36"/>
+  <g fill="#BD93F9" transform="translate(4 5) scale(1)">
+    <path d="M12 5.5C11 6.8 10.2 7.2 9.2 7.2L7 5 6.6 8.6C4.6 8 2.6 8.8 1 10.6 2.6 10.4 3.8 11 4.6 12.2 5.4 11.4 6.4 11.2 7.4 11.6 8 12.6 9 13 10 13 10.8 14.2 11.4 15.4 12 18Z"/>
+    <path d="M12 5.5C11 6.8 10.2 7.2 9.2 7.2L7 5 6.6 8.6C4.6 8 2.6 8.8 1 10.6 2.6 10.4 3.8 11 4.6 12.2 5.4 11.4 6.4 11.2 7.4 11.6 8 12.6 9 13 10 13 10.8 14.2 11.4 15.4 12 18Z" transform="matrix(-1 0 0 1 24 0)"/>
+  </g>
+  <circle cx="14" cy="13.6" r=".9" fill="#50FA7B"/>
+  <circle cx="18" cy="13.6" r=".9" fill="#50FA7B"/>
 </svg>

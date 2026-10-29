@@ -3,10 +3,18 @@ import Base from '../layouts/Base.astro';
 ---
 
 <Base title="Page not found" description="That page is not on ChicanoDev." robots="noindex" canonicalPath="/404.html">
-  <h1>Page not found</h1>
-  <p class="lede">That URL is not on this site.</p>
-  <p class="hero-actions">
-    <a href="/">Go to the homepage</a>
-    <a href="/posts/">Read the articles</a>
-  </p>
+  <section class="lost">
+    <svg class="bolt" viewBox="0 0 48 64" aria-hidden="true" focusable="false">
+      <rect x="4" y="22" width="40" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"></rect>
+      <path d="M24 4v16M24 44v16" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+      <path d="M14 26l4 12M22 26l4 12M30 26l4 12" stroke="var(--green)" stroke-width="2" stroke-linecap="round"></path>
+    </svg>
+    <h1>Page not found</h1>
+    <p class="eyebrow">It's alive? Not this page.</p>
+    <p class="lede">That URL is not on this site.</p>
+    <p class="hero-actions">
+      <a class="button button-primary" href="/">Go to the homepage</a>
+      <a class="button button-ghost" href="/posts/">Read the articles</a>
+    </p>
+  </section>
 </Base>
