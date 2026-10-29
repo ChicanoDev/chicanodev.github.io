@@ -12,7 +12,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "test": "astro check && astro build && node --test scripts/check-dist.test.mjs && playwright test"
+    "test": "astro check && astro build && node --test scripts/*.test.mjs && playwright test"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "^0.4.6",
