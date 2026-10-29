@@ -1,0 +1,278 @@
+---
+title: "Bare Metal, VMs, Containers, and the Cloud: Where Does Your Code Actually Run?"
+date: 2026-11-17 09:00:00 -0600
+description: "A plain-English guide to bare metal, virtual machines, containers, and 'the cloud': what each one really is, how they differ, and a few commands that let you see the difference for yourself."
+categories: [devops]
+tags: [devops, cloud, docker, virtualization, containers, beginners]
+draft: true
+---
+
+import YouTube from '../../components/YouTube.astro';
+
+"It works on my machine."
+
+You've heard it. You've probably *said* it. But what is "my machine," really? A physical computer on your desk? A virtual machine? A container? Something in a data center you've never seen?
+
+These four words get thrown around constantly (bare metal, VM, container, cloud), and they get mixed up even more. People say "the cloud" when they mean "a virtual machine." They say "container" when they mean "tiny VM." (That one is wrong in an important way, and we'll prove it.)
+
+This post is the long version of my three-part short series. We'll build up from the simplest idea to the most abstract one, and along the way I'll show you commands that let you *see* the differences instead of just taking my word for it.
+
+{/*
+  When the series is live, drop the playlist or first video here:
+  <YouTube id="REPLACE_ME" title="Where does your code run? Bare metal vs VM vs container vs cloud" />
+*/}
+
+If you're new to the terminal, start with [the Linux commands post](/posts/basic-linux-commands-for-beginners/). Several of the examples below use it.
+
+## The apartment-building analogy
+
+Analogies can be cheesy, but this one carries the whole post, so bear with me.
+
+Imagine you need somewhere to live (somewhere to run your code):
+
+- **Bare metal** is owning a **detached house**. Your land, your plumbing, your wiring. Nobody else's business.
+- A **virtual machine** is an **apartment**. A big building (one physical server) is divided into many apartments. Each has its own kitchen and its own plumbing, fully self-contained, and the neighbors can't wander in.
+- A **container** is a **room in a shared house**. You get your own bedroom and your own stuff, but you share the kitchen, plumbing, and wiring with everyone else. It's cheaper, and you can move in within minutes.
+- **The cloud** isn't a fourth kind of housing. It's the **landlord**: a company that owns enormous buildings and rents you a house, an apartment, or a room by the hour.
+
+Hold on to that last point, because it's the one most people miss. We'll come back to it.
+
+## 1. Bare metal: the house
+
+**Bare metal** means your software runs directly on physical hardware. One physical computer, one operating system, your apps on top.
+
+```text
++----------------+
+|      Apps      |
++----------------+
+|       OS       |
++----------------+
+|    Hardware    |
++----------------+
+```
+
+Your laptop is bare metal. So is a server in a rack that runs one thing.
+
+**What's good:**
+
+- **Performance.** No layers between your code and the hardware. You get every CPU cycle and every byte of RAM.
+- **Simplicity.** Fewer moving parts to understand and debug.
+- **Special hardware.** GPUs, fast storage, and specialized network cards are easiest to use directly.
+
+**What's hard:**
+
+- **One machine, one job.** If the server sits at 5% usage, the other 95% is wasted.
+- **Slow to change.** Need another server? Order it, ship it, rack it, install an OS.
+- **Hardware fails.** When it dies, whatever ran on it dies with it, unless you planned ahead.
+
+Bare metal isn't old-fashioned. It's still the right answer for heavy databases, high-performance computing, and anything where every millisecond counts.
+
+## 2. Virtual machines: the apartments
+
+Now imagine you want to split one powerful server into several smaller, isolated computers. That's a **virtual machine** (VM).
+
+The key ingredient is the **hypervisor**, software that carves up the hardware and hands each VM its own slice of CPU, memory, and disk.
+
+```text
++--------+ +--------+
+|  Apps  | |  Apps  |
+|   OS   | |   OS   |
++--------+ +--------+
++------------------+
+|    Hypervisor    |
++------------------+
+|     Hardware     |
++------------------+
+```
+
+Notice that **each VM has its own full operating system**, with its own kernel. To the software inside, it looks like a real computer, because the hypervisor is faking real hardware for it.
+
+You'll hear about two flavors of hypervisor:
+
+| Type | Runs | Examples |
+| --- | --- | --- |
+| Type 1 ("bare-metal") | Directly on the hardware | KVM, VMware ESXi, Microsoft Hyper-V, Xen |
+| Type 2 ("hosted") | As an app on top of a normal OS | VirtualBox, VMware Workstation, Parallels |
+
+Servers typically use Type 1. Your laptop, when you spin up a test VM, typically uses Type 2.
+
+**What's good:**
+
+- **Strong isolation.** A crash or compromise inside one VM is walled off from the others. Different VMs can even run different operating systems side by side.
+- **Better utilization.** Many VMs share one box, so less hardware sits idle.
+- **Snapshots and portability.** A VM is basically a big file. You can snapshot it before a risky change, copy it, and move it.
+
+**What's hard:**
+
+- **Heavy.** Every VM carries an entire operating system: gigabytes of disk, a chunk of RAM, and a minute or so to boot.
+- **Overhead.** The hypervisor layer costs some performance.
+
+### See it yourself
+
+If you're on a Linux machine, ask it whether it knows it's virtual:
+
+```sh
+systemd-detect-virt        # prints "kvm", "vmware", "none", etc.
+lscpu | grep -i hypervisor
+nproc                      # how many CPU cores did this machine get?
+free -h                    # how much memory?
+```
+
+On a VM, you're looking at the slice the hypervisor gave you, not the whole physical server. (On bare metal, `systemd-detect-virt` prints `none`.)
+
+## 3. Containers: the shared house
+
+Here's where people get confused, so let me say it plainly:
+
+> **A container is not a tiny virtual machine.**
+
+A VM virtualizes the *hardware*, so each one needs its own operating system. A container virtualizes the *operating system*: all containers on a machine **share one kernel**. Each container just gets its own private view of files, processes, and the network.
+
+```text
++-----+ +-----+ +-----+
+| App | | App | | App |
++-----+ +-----+ +-----+
++---------------------+
+|  Container engine   |
++---------------------+
+| Host OS (1 kernel)  |
++---------------------+
+|      Hardware       |
++---------------------+
+```
+
+There's no guest OS to boot. That's why a container starts in a fraction of a second and why you can pack dozens onto a machine that could only hold a handful of VMs.
+
+### How it works (no magic)
+
+Containers are built from two features **in the Linux kernel itself**:
+
+- **Namespaces** give a process its own private view of the system: its own process list, network, hostname, and filesystem. The process thinks it's alone.
+- **cgroups** (control groups) limit how much CPU, memory, and I/O a group of processes can use.
+
+Tools like Docker and Podman package those features up in a friendly way, plus an **image** format (a read-only template made of layers) so you can ship your app and everything it needs as one unit. That's the real superpower: *"it works on my machine"* turns into *"here's the exact machine."*
+
+### Prove it: the shared kernel
+
+You need Docker or Podman for this one, but it's worth five minutes. Compare the kernel version on your host with the one inside a container:
+
+```sh
+uname -r                                   # the host's kernel
+docker run --rm debian uname -r            # the container's kernel
+```
+
+The two numbers match. The container doesn't have a kernel of its own. It's borrowing yours.
+
+Now see what the container *does* have: its own files and libraries.
+
+```sh
+docker run --rm debian head -1 /etc/os-release   # Debian
+docker run --rm alpine head -1 /etc/os-release   # Alpine, completely different userland
+```
+
+Two different "distros," one shared kernel. And to see how little a container sees of the machine:
+
+```sh
+docker run --rm debian ps -e        # just a couple of processes
+ls -a /.dockerenv                   # run this *inside* a Docker container to see the marker
+```
+
+Inside a container, `ps` shows only the container's own processes, not everything on the host. That's a namespace at work.
+
+> **A fun wrinkle:** on a Mac or Windows machine, you'll often see a Linux kernel version when you run that test, even though the host isn't Linux. That's because Docker Desktop quietly runs a small Linux **virtual machine**, and your containers share *that* VM's kernel. Containers and VMs aren't rivals. They stack.
+
+**What's good:**
+
+- **Fast and light.** Start in under a second, tiny footprint.
+- **Consistent.** The same image runs the same way on your laptop, in CI, and in production.
+- **Efficient.** Lots of workloads on fewer machines.
+
+**What's hard:**
+
+- **Weaker isolation than a VM.** The kernel is shared, so a kernel-level flaw can affect every container on the host. (This is why security-sensitive platforms often run containers *inside* VMs.)
+- **Linux containers need a Linux kernel.** Hence the hidden VM on Mac and Windows.
+- **More to learn.** Images, networking, storage, and orchestration (Kubernetes) are their own world.
+
+## 4. The cloud: the landlord
+
+Now the word everybody uses and nobody defines.
+
+**The cloud is someone else's computers, in a data center, that you rent by the hour or the second.** That's it. It isn't a fourth technology that competes with the other three. It's a *business model* for renting them.
+
+When you rent from a cloud provider, you're renting one of the things we just covered:
+
+| What you rent | What you get | Everyday name |
+| --- | --- | --- |
+| A bare-metal server | A whole physical machine | "Bare metal instance" |
+| A virtual machine | A slice of a server | "Instance," "droplet," "VM" |
+| A container platform | Run containers without managing servers | "Managed containers," "container service" |
+
+### The three flavors: IaaS, PaaS, SaaS
+
+How much the provider does for you decides the label. Back to housing, this time with food:
+
+| Model | You rent | Analogy | You still manage | Examples |
+| --- | --- | --- | --- | --- |
+| **IaaS**: Infrastructure as a Service | The machine | A kitchen and ingredients, you cook | OS, runtime, your app | AWS EC2, Google Compute Engine, Azure VMs |
+| **PaaS**: Platform as a Service | The platform | A meal kit, just add the cooking | Your code and data | Heroku, Google App Engine, Cloud Run |
+| **SaaS**: Software as a Service | The finished app | Eating out | Almost nothing, just use it | Gmail, Slack, Notion |
+
+The more the provider handles, the less control you have, and the less you have to maintain. Neither end is "better." It depends on what you're building and how much you want to own.
+
+### The deal you're really making
+
+**What you gain:**
+
+- **Pay for what you use.** No buying hardware for a peak you hit twice a year.
+- **Speed.** A server in minutes instead of weeks.
+- **Scale.** Add capacity when traffic spikes, remove it when it passes.
+- **Someone else swaps the dead hard drives.**
+
+**What you trade away:**
+
+- **Money surprises.** Cloud bills can balloon if you forget to turn things off, or if you misunderstand pricing for bandwidth and storage.
+- **Trust and dependency.** Your data and uptime now involve a third party.
+- **A shared responsibility.** The provider secures the building. You're still responsible for locking your own door: your configuration, your access keys, your data.
+
+## Putting it together
+
+Here's the recap of the whole series:
+
+| | You own... | Isolation | Starts in | Good for |
+| --- | --- | --- | --- | --- |
+| **Bare metal** | The whole box | Total (it's yours) | Minutes to days | Max performance, special hardware |
+| **VM** | A slice of a box, plus its own OS | Strong | A minute or so | Mixed workloads, strong separation |
+| **Container** | A slice of an OS | Moderate (shared kernel) | Seconds | Modern apps, consistent deployment |
+| **Cloud** | Nothing: you rent any of the above | Depends on what you rent | Minutes | Flexibility, scale, no hardware |
+
+They also **combine**. A very normal modern setup: you rent a **VM** from a **cloud** provider, and run **containers** inside it. One line of work, three of these words, no contradiction.
+
+## So which should you use?
+
+Rules of thumb that hold up pretty well:
+
+- **Learning or experimenting?** Containers on your laptop. They're fast, disposable, and free.
+- **Running a small app or side project?** A single cloud VM, or a managed platform (PaaS) if you don't want to run servers.
+- **Need to run different operating systems, or want hard isolation?** A VM.
+- **Performance-critical, or special hardware like GPUs?** Bare metal (or a cloud bare-metal instance).
+- **Running many services that need to scale and deploy often?** Containers, usually orchestrated by something like Kubernetes, usually in the cloud.
+
+And if you're not sure, start with the simplest thing that works. You can always move up a level later.
+
+## Three myths to retire
+
+1. **"Containers are lightweight VMs."** They share a kernel; VMs don't. (You just proved it with `uname -r`.)
+2. **"The cloud is a place."** It's a way of renting computers. Your bare-metal server in a colo isn't the cloud. The same server rented by the hour from a provider is.
+3. **"Serverless means there are no servers."** There are always servers. You just don't see, patch, or pay for them while they're idle.
+
+## Try it today
+
+Pick one and spend ten minutes:
+
+- Run `systemd-detect-virt` on a machine you own and see whether it knows it's virtual.
+- Install Docker or Podman and compare `uname -r` on your host to the one in a container.
+- Look at your cloud provider's pricing page and work out what a small VM costs for a month. Knowing that number demystifies a lot.
+
+Once you've *seen* the difference, it stops being vocabulary and starts being intuition.
+
+That wraps up this three-part set. Thanks for learning alongside me. If a topic here deserves its own deep dive (Kubernetes, anyone?), tell me. I'll add it to the list.

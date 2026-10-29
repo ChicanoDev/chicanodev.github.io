@@ -1,0 +1,441 @@
+---
+title: "Basic Linux Commands for Beginners, Learned by Doing"
+date: 2026-11-10 09:00:00 -0600
+description: "The Linux commands you'll actually use, grouped by the job they do (navigate, move, read, find, pipe, permissions, health, network, help) with real examples and the gotchas nobody warns you about."
+categories: [linux]
+tags: [linux, commands, beginners, terminal, bash]
+draft: true
+---
+
+import YouTube from '../../components/YouTube.astro';
+
+Most "top 60 Linux commands" lists read like a phone book. You scroll, you nod, you remember nothing.
+
+So let's not do that.
+
+This post follows the nine-part short series, but with more room to breathe. Instead of a flat list, we'll group commands by **the job you're trying to do**: get around, move stuff, read files, find things, chain tools together, fix permissions, check on the system, reach the network, and help yourself when you're stuck.
+
+If you want the exhaustive reference afterward, [Hostinger's list of 60 essential commands](https://www.hostinger.com/tutorials/linux-commands/) is a solid one to keep open in a tab.
+
+{/*
+  When the series is live, drop the playlist or first video here:
+  <YouTube id="REPLACE_ME" title="Basic Linux commands, part 1: get around" />
+*/}
+
+Before we start, if you haven't read the first post in this series, [the directory structure explainer](/posts/linux-directory-structure-explained/) gives you the map. This post gives you the vehicle.
+
+## Five ground rules before you type anything
+
+These apply to every command below, and knowing them saves hours.
+
+1. **A command is a verb, plus options, plus targets.** In `ls -l /etc`, `ls` is the verb, `-l` is an option that changes how it works, and `/etc` is what to act on.
+2. **Linux is case-sensitive.** `Notes.txt` and `notes.txt` are different files.
+3. **Tab completes things.** Type the first few letters of a file or command and press Tab. It saves typing *and* typos.
+4. **Ctrl+C stops whatever's running.** Stuck? Press it. (Quitting a pager like `man` is `q` instead.)
+5. **Silence means success.** Most commands print nothing when they work. No news is good news.
+
+Now, let's go.
+
+## 1. Get around
+
+You always need three answers: *where am I, what's here, and how do I go somewhere else?*
+
+| Command | Does what |
+| --- | --- |
+| `pwd` | Prints where you are (**p**rint **w**orking **d**irectory) |
+| `ls` | Lists what's here |
+| `cd` | Changes directory |
+| `mkdir` | Makes a folder |
+| `touch` | Creates an empty file |
+| `rmdir` | Removes an empty folder |
+
+```sh
+pwd                      # /home/dave
+ls                       # names only
+ls -a                    # include hidden files (dotfiles)
+ls -l                    # long format: permissions, owner, size, date
+mkdir demo               # new folder
+cd demo                  # step into it
+touch notes.txt          # new empty file
+cd ..                    # one level up
+```
+
+A few shortcuts worth burning into your fingers:
+
+- `cd` on its own (or `cd ~`) takes you home.
+- `cd -` jumps back to the previous folder. Great for hopping between two places.
+- `.` means "right here," and `..` means "one level up."
+
+**Absolute vs. relative paths.** A path that starts with `/` (like `/etc/hosts`) is **absolute**: it works from anywhere. A path that doesn't (like `demo/notes.txt`) is **relative**: it starts from where you are now.
+
+Here's the one that trips people up:
+
+```sh
+rmdir demo
+# rmdir: failed to remove 'demo': Directory not empty
+```
+
+`rmdir` is deliberately cautious. It only removes *empty* folders, so it can't surprise you. To remove a folder with stuff in it, you need `rm`, which is next, and which deserves some respect.
+
+## 2. Move stuff around
+
+| Command | Does what |
+| --- | --- |
+| `cp` | Copies a file |
+| `mv` | Moves *or renames* a file |
+| `rm` | Deletes a file |
+| `cat` | Prints a file's contents |
+
+```sh
+echo "hello" > a.txt     # write text into a file
+cat a.txt                # hello
+cp a.txt b.txt           # copy
+mv b.txt c.txt           # rename (it's just a move to a new name)
+mkdir box
+mv c.txt box/            # move it into the folder
+ls box                   # c.txt
+```
+
+That `echo ... > file` trick is worth a second look. The `>` sends a command's output to a file instead of the screen. A single `>` **overwrites**; a double `>>` **appends**. Mix them up once, and you'll never mix them up again.
+
+Now the warning.
+
+> **`rm` has no trash can.** When it's gone, it's gone. There is no undo.
+
+```sh
+rm a.txt                 # delete a file
+rm -r box                # delete a folder and everything inside it
+```
+
+Three habits that will save you someday:
+
+- **Use `rm -i`** if you're nervous. It asks before each deletion.
+- **Read the command before pressing Enter**, especially the path. A stray space turns `rm -r build/` into `rm -r build /`, which is a very different instruction.
+- **Never** run `rm -rf` as root on a path you haven't triple-checked. (Modern systems add a safeguard against `rm -rf /`, but there are plenty of other ways to hurt yourself.)
+
+Copying folders needs a flag too: `cp -r folder backup/` (the `-r` means *recursive*, include everything inside).
+
+## 3. Read files without opening an editor
+
+You don't have to open a file to see what's in it. Often you only need the beginning, the end, or the difference.
+
+```sh
+seq 1 200 > numbers.txt      # a handy 200-line test file
+
+head numbers.txt             # first 10 lines
+head -3 numbers.txt          # first 3
+tail -3 numbers.txt          # last 3
+```
+
+`tail` matters more than it looks, because **the newest lines of a log are at the bottom**. And it has a superpower:
+
+```sh
+tail -f /var/log/syslog      # follow: new lines appear as they're written
+```
+
+The `-f` flag keeps the command running and prints new lines the instant they arrive. This is how you watch a service misbehave in real time. Press Ctrl+C to stop. (Not every system has `/var/log/syslog`. Check what's in `/var/log`, or use `journalctl -f` on systemd machines.)
+
+**`diff`** compares two files and shows exactly what changed:
+
+```sh
+printf 'a\nb\n' > one
+printf 'a\nc\n' > two
+diff one two
+# 2c2
+# < b
+# ---
+# > c
+```
+
+Read it like this: line 2 **c**hanged. The `<` line is from the first file, the `>` line is from the second.
+
+> **Big file, want to scroll?** Use `less`. It's a pager: Space to page down, `/word` to search, `q` to quit. I have a separate short on it.
+
+## 4. Find anything
+
+Everyone loses a file eventually. Linux gives you three tools, and each is good at something different.
+
+| Tool | Searches | Best for |
+| --- | --- | --- |
+| `find` | The file tree, live | Finding files by name, type, size, age |
+| `locate` | A prebuilt index | Finding file names *fast* |
+| `grep` | Inside files | Finding **text** |
+
+Let's build a tiny project to search:
+
+```sh
+mkdir -p proj/src proj/docs
+echo "TODO fix login" > proj/src/app.py
+echo "done"           > proj/src/util.py
+echo "TODO write docs" > proj/docs/readme.md
+```
+
+**`find`** walks the folder and matches what you ask for:
+
+```sh
+find proj -name '*.py'       # files ending in .py
+find proj -type d            # directories only
+find proj -name '*.md' -mtime -7   # .md files changed in the last 7 days
+```
+
+Quote the pattern (`'*.py'`), or your shell may try to expand the `*` itself before `find` ever sees it.
+
+**`locate`** is faster because it doesn't walk anything. It searches a database of file names that's refreshed periodically (`sudo updatedb` refreshes it by hand):
+
+```sh
+locate os-release
+```
+
+Fast, but it only knows what was true the last time the index was built.
+
+**`grep`** looks *inside* files:
+
+```sh
+grep -rn TODO proj           # -r: every file in the folder, -n: line numbers
+grep -ril todo proj          # -i: ignore case, -l: just list the file names
+```
+
+A mnemonic: **find** for names, **locate** for speed, **grep** for contents.
+
+## 5. Chain tools together with pipes
+
+This is where Linux starts to feel like a superpower.
+
+Each command does one small thing. The **pipe** (`|`) feeds the output of one command into the next, so you can snap simple tools together into something specific.
+
+Here's a little data file:
+
+```sh
+printf 'name,lang\nana,python\nbo,go\ncy,rust\ndee,go\n' > people.csv
+cat people.csv
+```
+
+Now let's interrogate it:
+
+```sh
+cut -d, -f2 people.csv                 # pull out column 2 (language)
+cut -d, -f2 people.csv | sort          # ...then sort it
+cut -d, -f2 people.csv | sort | uniq -c   # ...then count duplicates
+```
+
+That last line is the whole philosophy in one breath. Cut out a column. Sort it. Count the repeats. Three tiny tools, one answer: *go* appears twice.
+
+A few more text tools:
+
+| Command | What it does | Example |
+| --- | --- | --- |
+| `sed` | Edits text as it flows past | `sed 's/go/golang/' people.csv` |
+| `awk` | A tiny language for columns | `awk -F, '{print $1}' people.csv` |
+| `tee` | Shows output **and** saves a copy | `ls \| tee list.txt` |
+
+- `sed 's/old/new/'` is find-and-replace on a stream. It doesn't change the original file unless you tell it to.
+- In `awk`, `$1` means "the first field," so that example prints every name.
+- `tee` is named after a plumbing T-fitting: output goes two ways at once. It's great for saving a log while still watching it.
+
+## 6. Users and permissions
+
+"Permission denied" is the most common error in Linux, so let's understand it instead of fighting it.
+
+```sh
+whoami                   # who am I?
+id                       # my user ID and groups
+sudo whoami              # run one command as the administrator -> root
+```
+
+`sudo` means "do this one thing with admin powers." It's the polite way to use them: temporary, logged, and not a permanent login as root.
+
+Now look at a file's permissions:
+
+```sh
+touch run.sh
+ls -l run.sh
+# -rw-r--r-- 1 dave dave 0 Nov 10 09:00 run.sh
+```
+
+That first chunk, `-rw-r--r--`, is the interesting part. Break it into pieces:
+
+```text
+-   rw-   r--   r--
+│    │     │     │
+│    │     │     └── everyone else: read only
+│    │     └──────── the group:      read only
+│    └────────────── the owner:      read + write
+└─────────────────── file type (- = regular file, d = directory)
+```
+
+Three kinds of people (owner, group, others) times three powers (**r**ead, **w**rite, e**x**ecute).
+
+Linux also writes these as numbers, because each power has a value:
+
+| Power | Value |
+| --- | --- |
+| read | 4 |
+| write | 2 |
+| execute | 1 |
+
+Add them up for each person. `rw-` is 4 + 2 = **6**. `r-x` is 4 + 1 = **5**. So:
+
+| Mode | Meaning | Typical use |
+| --- | --- | --- |
+| `644` | owner read/write; everyone else read | Normal files |
+| `755` | owner everything; everyone else read/execute | Scripts, programs, folders |
+| `600` | owner read/write; nobody else | Private keys |
+
+```sh
+chmod +x run.sh          # make it executable
+chmod 644 notes.txt      # set an exact mode
+sudo chown ana run.sh    # change the owner
+```
+
+> **Resist `chmod 777`.** It gives *everyone* full control. It feels like it fixes the problem because the error goes away, but you've turned a lock into an open door. Figure out who actually needs access and grant just that.
+
+Managing users:
+
+```sh
+sudo useradd ana         # create a user
+sudo passwd ana          # set their password
+sudo -u ana whoami       # run one command as ana
+su - ana                 # switch to ana for a whole session
+```
+
+## 7. Check the system's health
+
+When something feels slow or broken, these five questions get you most of the way to an answer.
+
+**Is the disk full?**
+
+```sh
+df -h /                  # how full is this disk? (-h = human-readable)
+du -sh ~/Downloads       # how big is this folder?
+```
+
+**What's running?**
+
+```sh
+ps -eo pid,comm | head   # a snapshot: process ID + command name
+top                      # live view (press q to quit)
+htop                     # friendlier, if installed
+```
+
+**Is memory okay?**
+
+```sh
+free -h                  # memory used and available
+uptime                   # how long it's been up + load average
+```
+
+**Stop something that's misbehaving:**
+
+```sh
+sleep 300 &              # start a background job
+pgrep sleep              # find its process ID
+kill 12345               # ask it to stop (use the real ID)
+```
+
+`kill` sends a polite signal (`SIGTERM`) that lets a program clean up. If a process ignores it, `kill -9` is the sledgehammer: it can't be ignored, but the program gets no chance to save anything. Polite first, sledgehammer last.
+
+**Who am I talking to?**
+
+```sh
+uname -sr                # kernel name and version
+hostname                 # this machine's name
+```
+
+## 8. Network and archives
+
+**Can I reach the internet?**
+
+```sh
+ping -c 2 1.1.1.1        # send 2 packets and time the replies
+```
+
+If replies come back, the path works. (Without `-c`, `ping` runs until you press Ctrl+C.)
+
+**Talk to a web server:**
+
+```sh
+curl -sI example.com | head -1     # just the status line
+wget -q example.com                # download a page to a file
+```
+
+`curl` is the Swiss Army knife for talking to servers (APIs, headers, downloads). `wget` is more of a straightforward downloader. A **200** status means "OK."
+
+**Bundle things up.** Archives are how you move or back up a whole folder as one file:
+
+```sh
+mkdir stuff && touch stuff/a stuff/b
+
+tar -czf stuff.tgz stuff     # Create, gZip, File
+tar -tzf stuff.tgz           # Tell me what's inside
+tar -xzf stuff.tgz           # eXtract
+
+zip -r stuff.zip stuff       # the format everyone knows
+unzip -l stuff.zip           # list contents
+unzip stuff.zip              # extract
+```
+
+The `tar` flags look like line noise until you attach words to them. **c**reate, **x**tract, **t**ell (list), g**z**ip, **f**ile. That's the whole trick.
+
+## 9. Help yourself
+
+Nobody memorizes everything. The people who look fast are the ones who know how to look things up.
+
+```sh
+man ls                   # the full manual (q to quit, / to search)
+ls --help | head         # a short summary of options
+history | tail           # what did I run recently?
+```
+
+In the terminal, **Ctrl+R** searches your history as you type. It's the single best productivity trick in this post.
+
+When a long command becomes a habit, give it a shorter name:
+
+```sh
+alias ll='ls -la'
+ll
+```
+
+Aliases vanish when you close the terminal. Add the line to `~/.bashrc` (or your shell's equivalent) to make it permanent.
+
+And `echo` prints text or variables, which is great for peeking at your environment:
+
+```sh
+echo $HOME               # your home folder
+echo $SHELL              # which shell you're using
+echo $PATH               # where the shell looks for commands
+```
+
+## A tiny challenge
+
+Put it all together. In a safe place (a throwaway container or VM is perfect), try this without looking back:
+
+1. Make a folder called `lab` and go into it.
+2. Create three files with `touch`.
+3. Write the word "hello" into one of them.
+4. Copy that file, then rename the copy.
+5. Find every file in `lab` with `find`.
+6. Make one of them executable, and confirm with `ls -l`.
+7. Bundle the whole folder into a `.tgz` and list what's inside.
+
+If you did that without peeking, you've got the fundamentals.
+
+## Cheat sheet
+
+| Job | Commands |
+| --- | --- |
+| Navigate | `pwd` `ls` `cd` `mkdir` `touch` `rmdir` |
+| Move things | `cp` `mv` `rm` `cat` |
+| Read files | `head` `tail` `tail -f` `diff` `less` |
+| Find things | `find` `locate` `grep` |
+| Chain and edit | `\|` `sort` `uniq` `cut` `sed` `awk` `tee` |
+| Users and permissions | `whoami` `id` `sudo` `su` `chmod` `chown` `useradd` `passwd` |
+| System health | `df` `du` `ps` `top` `htop` `kill` `free` `uname` `hostname` |
+| Network | `ping` `curl` `wget` |
+| Archives | `tar` `zip` `unzip` |
+| Get help | `man` `--help` `history` `alias` `echo` |
+
+## What's next
+
+You've got the map and the vehicle. The last post in this set zooms way out: *where does all this code actually run?* Bare metal, virtual machines, containers, and "the cloud," and how they differ.
+
+And if a command here confused you, or you've got a favorite trick I missed, let me know. That's how these posts get better.
