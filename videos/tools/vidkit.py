@@ -177,6 +177,35 @@ def build_tape(settings_text, body_text, output_path):
     return f"Output {output_path}\n{settings_text.rstrip()}\n\n{body_text.rstrip()}\n"
 
 
+def merge_cue_sets(sets, gap=0.0):
+    """Concatenate (cues, clip_duration) pairs into one timeline, `gap` seconds between clips."""
+    merged = []
+    offset = 0.0
+    for cues, duration in sets:
+        merged += cues if offset == 0 else offset_cues(cues, offset)
+        offset += duration + gap
+    return merged
+
+
+def parse_title(md_text):
+    for line in md_text.splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return ""
+
+
+_SIZES = {"vertical": (1080, 1920), "horizontal": (1920, 1080)}
+
+
+def check_clip(orient, width, height, duration, estimate, tolerance=1.5):
+    problems = []
+    if (width, height) != _SIZES[orient]:
+        problems.append(f"resolution {width}x{height}, want {_SIZES[orient][0]}x{_SIZES[orient][1]}")
+    if abs(duration - estimate) > tolerance:
+        problems.append(f"duration {duration:.1f}s vs estimate {estimate:.1f}s")
+    return problems
+
+
 ROOT = Path(__file__).resolve().parent.parent
 
 EPISODES = [
@@ -306,7 +335,98 @@ def _cmd_burn(argv):
     return 0
 
 
-COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn}
+def _probe(path):
+    """(width, height, duration) of a video via ffprobe."""
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+         "stream=width,height:format=duration", "-of", "csv=p=0", str(path)],
+        check=True, capture_output=True, text=True).stdout.split()
+    width, height = out[0].split(",")
+    return int(width), int(height), float(out[1])
+
+
+def _cmd_verify(argv):
+    failed = False
+    for series, slug in _select(argv):
+        eid = episode_id(series, slug)
+        estimate = estimate_duration((episode_dir(series, slug) / "body.tape").read_text())
+        for orient in ORIENTATIONS:
+            clip = ROOT / "out" / orient / f"{eid}.mp4"
+            if not clip.exists():
+                print(f"-- {orient:10} {eid}: not rendered")
+                failed = True
+                continue
+            problems = check_clip(orient, *_probe(clip), estimate)
+            print(f"{'OK' if not problems else '!!'} {orient:10} {eid}")
+            for problem in problems:
+                print(f"     {problem}")
+            failed = failed or bool(problems)
+    return 1 if failed else 0
+
+
+CARD_SECONDS = 2.0
+
+
+def _title_card(series_dir_id, index, title):
+    """2s Dracula title card (1920x1080, matching clip fps) rendered in the docker image."""
+    head, _, tail = title.partition(": ")
+    out = f"build/{series_dir_id}/card-{index:02}.mp4"
+    plex = "/usr/share/fonts/ibm-plex-mono/IBMPlexMono-Bold.ttf"
+    text = (f"drawtext=fontfile={plex}:text='{head}':fontcolor=0x8be9fd:fontsize=48:x=(w-text_w)/2:y=h/2-90,"
+            f"drawtext=fontfile={plex}:text='{tail or head}':fontcolor=0xf8f8f2:fontsize=76:x=(w-text_w)/2:y=h/2")
+    _docker("-y", "-f", "lavfi", "-i", f"color=c=0x282a36:s=1920x1080:r=50:d={CARD_SECONDS}",
+            "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-vf", text, "-t", str(CARD_SECONDS),
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", out, entrypoint="ffmpeg")
+    return out
+
+
+def _parse_srt_cues(srt_text):
+    cues = []
+    for block in srt_text.strip().split("\n\n"):
+        lines = block.splitlines()
+        a, _, b = lines[1].partition(" --> ")
+        cues.append(Cue(_srt_seconds(a), _srt_seconds(b), "\n".join(lines[2:])))
+    return cues
+
+
+def _srt_seconds(stamp):
+    hms, millis = stamp.split(",")
+    h, m, sec = hms.split(":")
+    return int(h) * 3600 + int(m) * 60 + int(sec) + int(millis) / 1000
+
+
+def _cmd_compile(argv):
+    wanted = set(argv)
+    for series in dict.fromkeys(s for s, _ in EPISODES):
+        if wanted and series not in wanted:
+            continue
+        episodes = [(s, n) for s, n in EPISODES if s == series]
+        sets, concat = [], []
+        for index, (s, n) in enumerate(episodes, 1):
+            eid = episode_id(s, n)
+            clip = ROOT / "out" / "horizontal" / f"{eid}.mp4"
+            if not clip.exists():
+                print(f"{series}: {clip.name} missing, render + burn first")
+                return 1
+            title = parse_title((episode_dir(s, n) / "voiceover.md").read_text())
+            (ROOT / "build" / series).mkdir(parents=True, exist_ok=True)
+            card = _title_card(series, index, title)
+            concat += [f"file '/vhs/{card}'", f"file '/vhs/out/horizontal/{clip.name}'"]
+            sets.append((_parse_srt_cues((ROOT / "out" / "horizontal" / f"{eid}.srt").read_text()), _probe(clip)[2]))
+        listing = ROOT / "build" / series / "concat.txt"
+        listing.write_text("\n".join(concat) + "\n")
+        (ROOT / "out" / "youtube").mkdir(parents=True, exist_ok=True)
+        _docker("-y", "-f", "concat", "-safe", "0", "-i", f"build/{series}/concat.txt",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", f"out/youtube/{series}-full.mp4",
+                entrypoint="ffmpeg")
+        merged = offset_cues(merge_cue_sets(sets, gap=CARD_SECONDS), CARD_SECONDS)
+        (ROOT / "out" / "youtube" / f"{series}-full.srt").write_text(format_srt(merged))
+        print(f"out/youtube/{series}-full.mp4  ({len(episodes)} parts)")
+    return 0
+
+
+COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn,
+            "verify": _cmd_verify, "compile": _cmd_compile}
 
 
 def main(argv=None):

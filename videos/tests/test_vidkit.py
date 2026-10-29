@@ -234,3 +234,44 @@ class TestCaptionStyle:
     def test_caption_is_bottom_centered(self):
         style = self.parse(vidkit.caption_force_style(1080, font_px=40, margin_px=48, outline_px=3))
         assert style["Alignment"] == "2"
+
+
+class TestMergeCueSets:
+    def test_second_clip_is_shifted_by_first_duration_plus_gap(self):
+        a = [vidkit.Cue(0, 5, "a1")]
+        b = [vidkit.Cue(0, 4, "b1"), vidkit.Cue(4, 8, "b2")]
+        merged = vidkit.merge_cue_sets([(a, 60.0), (b, 70.0)], gap=2.0)
+        assert [(c.start, c.end, c.text) for c in merged] == [(0, 5, "a1"), (62, 66, "b1"), (66, 70, "b2")]
+
+    def test_third_clip_accumulates_both_earlier_offsets(self):
+        sets = [([vidkit.Cue(0, 1, "x")], 10.0)] * 3
+        merged = vidkit.merge_cue_sets(sets, gap=1.0)
+        assert [c.start for c in merged] == [0, 11, 22]
+
+    def test_single_clip_is_unchanged(self):
+        cues = [vidkit.Cue(1, 2, "only")]
+        assert vidkit.merge_cue_sets([(cues, 30.0)]) == cues
+
+
+class TestParseTitle:
+    def test_first_h1(self):
+        assert vidkit.parse_title("# Linux has no C drive\n\n## [0:00-0:05] Hook\n") == "Linux has no C drive"
+
+
+class TestCheckClip:
+    def test_good_vertical_clip(self):
+        assert vidkit.check_clip("vertical", 1080, 1920, 70.4, 70.0) == []
+
+    def test_good_horizontal_clip(self):
+        assert vidkit.check_clip("horizontal", 1920, 1080, 69.0, 70.0) == []
+
+    def test_wrong_resolution(self):
+        problems = vidkit.check_clip("vertical", 1920, 1080, 70.0, 70.0)
+        assert any("resolution" in p for p in problems)
+
+    def test_duration_drift_beyond_tolerance(self):
+        problems = vidkit.check_clip("horizontal", 1920, 1080, 75.0, 70.0)
+        assert any("duration" in p for p in problems)
+
+    def test_drift_within_tolerance_is_fine(self):
+        assert vidkit.check_clip("horizontal", 1920, 1080, 71.4, 70.0) == []
