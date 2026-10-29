@@ -275,3 +275,25 @@ class TestCheckClip:
 
     def test_drift_within_tolerance_is_fine(self):
         assert vidkit.check_clip("horizontal", 1920, 1080, 71.4, 70.0) == []
+
+
+class TestScaleCues:
+    def test_scales_both_edges_by_factor(self):
+        scaled = vidkit.scale_cues([vidkit.Cue(10, 20, "a")], 0.9)
+        assert scaled[0].start == pytest.approx(9.0)
+        assert scaled[0].end == pytest.approx(18.0)
+        assert scaled[0].text == "a"
+
+    def test_last_cue_ends_at_clip_duration(self):
+        beats = [beat(0, 40, "one two"), beat(40, 80, "three four")]
+        cues = vidkit.make_cues(beats)
+        scaled = vidkit.scale_cues(cues, 77.0 / 80.0)
+        assert scaled[-1].end == pytest.approx(77.0)
+
+
+class TestCheckClipRelativeTolerance:
+    def test_three_percent_shortfall_is_normal_render_drift(self):
+        assert vidkit.check_clip("horizontal", 1920, 1080, 72.1, 74.3) == []
+
+    def test_ten_percent_is_a_real_problem(self):
+        assert any("duration" in p for p in vidkit.check_clip("horizontal", 1920, 1080, 68.0, 76.0))

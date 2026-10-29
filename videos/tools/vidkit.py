@@ -177,6 +177,10 @@ def build_tape(settings_text, body_text, output_path):
     return f"Output {output_path}\n{settings_text.rstrip()}\n\n{body_text.rstrip()}\n"
 
 
+def scale_cues(cues, factor):
+    return [Cue(c.start * factor, c.end * factor, c.text) for c in cues]
+
+
 def merge_cue_sets(sets, gap=0.0):
     """Concatenate (cues, clip_duration) pairs into one timeline, `gap` seconds between clips."""
     merged = []
@@ -197,11 +201,12 @@ def parse_title(md_text):
 _SIZES = {"vertical": (1080, 1920), "horizontal": (1920, 1080)}
 
 
-def check_clip(orient, width, height, duration, estimate, tolerance=1.5):
+def check_clip(orient, width, height, duration, estimate, tolerance=0.04):
+    """VHS renders run ~2-3% short of the estimate even serially; flag drift beyond `tolerance` (fraction)."""
     problems = []
     if (width, height) != _SIZES[orient]:
         problems.append(f"resolution {width}x{height}, want {_SIZES[orient][0]}x{_SIZES[orient][1]}")
-    if abs(duration - estimate) > tolerance:
+    if abs(duration - estimate) > tolerance * estimate:
         problems.append(f"duration {duration:.1f}s vs estimate {estimate:.1f}s")
     return problems
 
@@ -287,12 +292,16 @@ def _docker(*args, entrypoint=None):
     subprocess.run(cmd, check=True)
 
 
-def write_srt(series, slug):
+def write_srt(series, slug, duration=None, name="captions.srt"):
+    """Write captions from the voiceover; with `duration`, stretch them to the rendered clip's real length."""
     folder = episode_dir(series, slug)
     beats = parse_voiceover((folder / "voiceover.md").read_text())
-    path = ROOT / "build" / episode_id(series, slug) / "captions.srt"
+    cues = make_cues(beats)
+    if duration:
+        cues = scale_cues(cues, duration / beats[-1].end)
+    path = ROOT / "build" / episode_id(series, slug) / name
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(format_srt(make_cues(beats)))
+    path.write_text(format_srt(cues))
     return path
 
 
@@ -318,16 +327,17 @@ def _cmd_render(argv):
 def _cmd_burn(argv):
     for series, slug in _select(argv):
         eid = episode_id(series, slug)
-        write_srt(series, slug)
         for orient in ORIENTATIONS:
             style = CAPTION_STYLE[orient]
+            raw_seconds = _probe(ROOT / "build" / eid / f"{orient}-raw.mp4")[2]
+            srt = write_srt(series, slug, raw_seconds, f"captions-{orient}.srt")
             out = ROOT / "out" / orient
             out.mkdir(parents=True, exist_ok=True)
-            shutil.copy(ROOT / "build" / eid / "captions.srt", out / f"{eid}.srt")
+            shutil.copy(srt, out / f"{eid}.srt")
             _docker(
                 "-y", "-i", f"build/{eid}/{orient}-raw.mp4",
                 "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
-                "-vf", f"subtitles=build/{eid}/captions.srt:force_style='{style}'",
+                "-vf", f"subtitles=build/{eid}/{srt.name}:force_style='{style}'",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
                 f"out/{orient}/{eid}.mp4",
                 entrypoint="ffmpeg",
@@ -372,8 +382,13 @@ def _title_card(series_dir_id, index, title):
     head, _, tail = title.partition(": ")
     out = f"build/{series_dir_id}/card-{index:02}.mp4"
     plex = "/usr/share/fonts/ibm-plex-mono/IBMPlexMono-Bold.ttf"
-    text = (f"drawtext=fontfile={plex}:text='{head}':fontcolor=0x8be9fd:fontsize=48:x=(w-text_w)/2:y=h/2-90,"
-            f"drawtext=fontfile={plex}:text='{tail or head}':fontcolor=0xf8f8f2:fontsize=76:x=(w-text_w)/2:y=h/2")
+    # textfile= avoids escaping ':' and '#' inside drawtext's own filter syntax.
+    (ROOT / "build" / series_dir_id / f"card-{index:02}-head.txt").write_text(head)
+    (ROOT / "build" / series_dir_id / f"card-{index:02}-tail.txt").write_text(tail or head)
+    text = (f"drawtext=fontfile={plex}:textfile=build/{series_dir_id}/card-{index:02}-head.txt:"
+            f"fontcolor=0x8be9fd:fontsize=48:x=(w-text_w)/2:y=h/2-90,"
+            f"drawtext=fontfile={plex}:textfile=build/{series_dir_id}/card-{index:02}-tail.txt:"
+            f"fontcolor=0xf8f8f2:fontsize=76:x=(w-text_w)/2:y=h/2")
     _docker("-y", "-f", "lavfi", "-i", f"color=c=0x282a36:s=1920x1080:r=50:d={CARD_SECONDS}",
             "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-vf", text, "-t", str(CARD_SECONDS),
             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", out, entrypoint="ffmpeg")
