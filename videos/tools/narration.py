@@ -1,4 +1,5 @@
 """Segment-based narration: stable segment IDs, take selection, audio checks and ingest."""
+import hashlib
 import json
 import re
 import subprocess
@@ -123,4 +124,101 @@ def ingest(src, dst, pad=0.12):
                       f"afade=t=in:d=0.01,areverse,afade=t=in:d=0.02,areverse"])
     Path(dst).parent.mkdir(parents=True, exist_ok=True)
     _ffmpeg("-y", "-i", str(src), "-af", chain, "-ac", "1", "-ar", str(WORK_RATE), "-c:a", "pcm_s16le", str(dst))
+    return Path(dst)
+
+
+class MissingTakes(Exception):
+    """One or more segments have no recording yet."""
+
+
+@dataclass(frozen=True)
+class SegmentAudio:
+    segment: Segment
+    take: Path
+    wav: Path
+    duration: float
+    status: str  # "ran" or "cached"
+    audio_sha: str
+
+
+def file_sha(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def cache_key(*parts):
+    """Stable key from file contents (Path parts) and plain values (everything else)."""
+    digest = hashlib.sha256()
+    for part in parts:
+        digest.update((file_sha(part) if isinstance(part, Path) else str(part)).encode())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def run_stage(out, key, work, force=False):
+    """Run `work()` unless `out` exists and was built from the same `key`. Returns 'ran' or 'cached'."""
+    out = Path(out)
+    stamp = out.with_name(out.name + ".key")
+    if not force and out.exists() and stamp.exists() and stamp.read_text() == key:
+        return "cached"
+    work()
+    stamp.write_text(key)
+    return "ran"
+
+
+def timeline(durations, pause):
+    """[(start, end)] for clips joined with `pause` seconds between them."""
+    spans, cursor = [], 0.0
+    for d in durations:
+        spans.append((round(cursor, 6), round(cursor + d, 6)))
+        cursor += d + pause
+    return spans
+
+
+def duration_of(path):
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+                         capture_output=True, text=True)
+    try:
+        return float(out.stdout.strip())
+    except ValueError:
+        raise BadAudio(f"{Path(path).name}: not a readable audio file") from None
+
+
+def prepare(segments, narration_dir, work_dir, selected, pad=0.12, force=False):
+    """Ingest each segment's take. Only segments whose take (or settings) changed are reprocessed."""
+    work_dir = Path(work_dir)
+    takes = {s.id: resolve_take(narration_dir, s.id, selected) for s in segments}
+    missing = [f"{s.id}.m4a" for s in segments if takes[s.id] is None]
+    if missing:
+        raise MissingTakes("missing narration: " + ", ".join(missing) + f" (in {narration_dir})")
+    report = []
+    for s in segments:
+        take, wav = takes[s.id], work_dir / f"{s.id}.wav"
+        sha = file_sha(take)
+        status = run_stage(wav, cache_key(sha, pad, WORK_RATE, SILENCE_DB, "ingest-v1"),
+                           lambda take=take, wav=wav: ingest(take, wav, pad), force)
+        report.append(SegmentAudio(s, take, wav, duration_of(wav), status, sha))
+    return report
+
+
+def stitch(report, dst, pause=0.3, force=False):
+    """Join prepared segments in script order with a natural pause between them."""
+    wavs = [r.wav for r in report]
+    key = cache_key(pause, "stitch-v1", *(r.audio_sha for r in report))
+
+    def work():
+        args = []
+        for w in wavs:
+            args += ["-i", str(w)]
+        pads = [f"[{i}:a]apad=pad_dur={pause}[p{i}]" if i < len(wavs) - 1 else f"[{i}:a]anull[p{i}]"
+                for i in range(len(wavs))]
+        joined = "".join(f"[p{i}]" for i in range(len(wavs)))
+        filt = ";".join(pads) + f";{joined}concat=n={len(wavs)}:v=0:a=1[out]"
+        _ffmpeg("-y", *args, "-filter_complex", filt, "-map", "[out]", "-c:a", "pcm_s16le", str(dst))
+
+    Path(dst).parent.mkdir(parents=True, exist_ok=True)
+    run_stage(Path(dst), key, work, force)
     return Path(dst)

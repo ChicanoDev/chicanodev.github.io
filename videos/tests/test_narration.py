@@ -152,3 +152,109 @@ class TestIngest:
         before = take.read_bytes()
         narration.ingest(take, tmp_path / "out.wav")
         assert take.read_bytes() == before
+
+
+class TestStageCache:
+    def test_runs_then_caches(self, tmp_path):
+        out, calls = tmp_path / "o.txt", []
+
+        def work():
+            calls.append(1)
+            out.write_text("x")
+
+        assert narration.run_stage(out, "k1", work) == "ran"
+        assert narration.run_stage(out, "k1", work) == "cached"
+        assert len(calls) == 1
+
+    def test_changed_key_reruns(self, tmp_path):
+        out = tmp_path / "o.txt"
+        work = lambda: out.write_text("x")  # noqa: E731
+        narration.run_stage(out, "k1", work)
+        assert narration.run_stage(out, "k2", work) == "ran"
+
+    def test_deleted_output_reruns(self, tmp_path):
+        out = tmp_path / "o.txt"
+        work = lambda: out.write_text("x")  # noqa: E731
+        narration.run_stage(out, "k1", work)
+        out.unlink()
+        assert narration.run_stage(out, "k1", work) == "ran"
+
+    def test_force_reruns(self, tmp_path):
+        out = tmp_path / "o.txt"
+        work = lambda: out.write_text("x")  # noqa: E731
+        narration.run_stage(out, "k1", work)
+        assert narration.run_stage(out, "k1", work, force=True) == "ran"
+
+    def test_key_depends_on_file_content_not_name(self, tmp_path):
+        a, b = tmp_path / "a", tmp_path / "b"
+        a.write_bytes(b"same"); b.write_bytes(b"same")
+        assert narration.cache_key(a, "x") == narration.cache_key(b, "x")
+        b.write_bytes(b"diff")
+        assert narration.cache_key(a, "x") != narration.cache_key(b, "x")
+
+
+class TestTimeline:
+    def test_starts_include_pause(self):
+        assert narration.timeline([2.0, 3.0, 1.0], pause=0.3) == [(0.0, 2.0), (2.3, 5.3), (5.6, 6.6)]
+
+    def test_empty(self):
+        assert narration.timeline([], pause=0.3) == []
+
+
+def make_episode(tmp_path, n=3):
+    """Narration dir with n synthetic takes, 1.0s of tone each at differing pitch."""
+    d = tmp_path / "narration"
+    d.mkdir()
+    for i in range(1, n + 1):
+        synth(d / f"{i:02}-seg{i}.wav", 1.5, lead=0.4, tail=0.4, freq=300 + 100 * i, volume=4)
+    segs = [narration.Segment(i, f"{i:02}-seg{i}", f"Seg{i}", "t") for i in range(1, n + 1)]
+    return d, segs
+
+
+class TestPrepare:
+    def test_ingests_every_segment_first_time(self, tmp_path):
+        d, segs = make_episode(tmp_path)
+        report = narration.prepare(segs, d, tmp_path / "work", {})
+        assert [r.status for r in report] == ["ran", "ran", "ran"]
+        assert all(r.wav.exists() and r.duration > 1.0 for r in report)
+
+    def test_second_run_is_all_cached(self, tmp_path):
+        d, segs = make_episode(tmp_path)
+        narration.prepare(segs, d, tmp_path / "work", {})
+        assert {r.status for r in narration.prepare(segs, d, tmp_path / "work", {})} == {"cached"}
+
+    def test_replacing_one_take_reprocesses_only_that_segment(self, tmp_path):
+        d, segs = make_episode(tmp_path)
+        narration.prepare(segs, d, tmp_path / "work", {})
+        synth(d / "02-seg2.wav", 2.0, lead=0.4, tail=0.4, freq=900, volume=4)
+        assert [r.status for r in narration.prepare(segs, d, tmp_path / "work", {})] == ["cached", "ran", "cached"]
+
+    def test_missing_take_is_reported_with_filename(self, tmp_path):
+        d, segs = make_episode(tmp_path)
+        (d / "03-seg3.wav").unlink()
+        with pytest.raises(narration.MissingTakes) as err:
+            narration.prepare(segs, d, tmp_path / "work", {})
+        assert "03-seg3" in str(err.value)
+
+    def test_changed_pad_reprocesses(self, tmp_path):
+        d, segs = make_episode(tmp_path, 1)
+        narration.prepare(segs, d, tmp_path / "work", {}, pad=0.1)
+        assert narration.prepare(segs, d, tmp_path / "work", {}, pad=0.3)[0].status == "ran"
+
+
+class TestStitch:
+    def test_joined_length_is_sum_plus_pauses(self, tmp_path):
+        d, segs = make_episode(tmp_path)
+        report = narration.prepare(segs, d, tmp_path / "work", {})
+        out = narration.stitch(report, tmp_path / "work" / "narration.wav", pause=0.3)
+        expected = sum(r.duration for r in report) + 0.3 * 2
+        assert narration.measure(out).duration == pytest.approx(expected, abs=0.05)
+
+    def test_stitch_cached_until_a_segment_changes(self, tmp_path):
+        d, segs = make_episode(tmp_path)
+        work = tmp_path / "work"
+        report = narration.prepare(segs, d, work, {})
+        narration.stitch(report, work / "narration.wav", pause=0.3)
+        mtime = (work / "narration.wav").stat().st_mtime_ns
+        narration.stitch(narration.prepare(segs, d, work, {}), work / "narration.wav", pause=0.3)
+        assert (work / "narration.wav").stat().st_mtime_ns == mtime
