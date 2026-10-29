@@ -9,17 +9,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import measure  # noqa: E402
 
 
-def fake_terminal(path, seconds=12, clears=(4.0, 8.0), fps=25):
+def fake_terminal(path, seconds=12, clears=(4.0, 8.0), fps=25, size="320x180"):
     """Dark screen where 'text' (a white box) grows after t=0.5 and vanishes at each clear time."""
     edges = [0.0, *clears, seconds]
     parts = []
     for a, b in zip(edges, edges[1:]):
         start = a + 0.4
         # two 'lines' appear 0.5s apart after each clear, like typed output
-        parts.append(f"drawbox=x=20:y=20:w=200:h=12:color=white:t=fill:enable='between(t,{start},{b - 0.0001})'")
-        parts.append(f"drawbox=x=20:y=50:w=260:h=12:color=white:t=fill:enable='between(t,{start + 0.5},{b - 0.0001})'")
+        parts.append(f"drawbox=x=iw*0.06:y=ih*0.10:w=iw*0.6:h=ih*0.04:color=white:t=fill:enable='between(t,{start},{b - 0.0001})'")
+        parts.append(f"drawbox=x=iw*0.06:y=ih*0.20:w=iw*0.8:h=ih*0.04:color=white:t=fill:enable='between(t,{start + 0.5},{b - 0.0001})'")
     vf = ",".join(parts)
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", f"color=c=0x282a36:s=320x180:r={fps}:d={seconds}",
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", f"color=c=0x282a36:s={size}:r={fps}:d={seconds}",
                     "-vf", vf, "-pix_fmt", "yuv420p", str(path)], check=True)
     return path
 

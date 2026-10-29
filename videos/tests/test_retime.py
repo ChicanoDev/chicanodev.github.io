@@ -114,3 +114,21 @@ class TestPeriods:
 
     def test_single(self):
         assert retime.beat_periods([2.0], pause=0.3, tail=0.5) == pytest.approx([2.5])
+
+
+class TestAnchorOffset:
+    CLEAR = """# @beat 0:05 Root
+Type "clear"
+Enter
+Sleep 300ms
+Type "ls /"
+Enter
+"""
+
+    def test_time_from_marker_to_clear_enter(self):
+        _, blocks = retime.split_beats(self.CLEAR)
+        assert retime.anchor_offset(blocks[0]) == pytest.approx(0.35)  # "clear" = 5 chars x 70ms
+
+    def test_none_when_beat_does_not_start_with_clear(self):
+        _, blocks = retime.split_beats('# @beat 0:00 Hook\nType "# hi"\nEnter\n')
+        assert retime.anchor_offset(blocks[0]) is None

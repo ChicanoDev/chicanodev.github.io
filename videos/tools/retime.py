@@ -105,3 +105,13 @@ def retime_tape(tape_text, periods):
         lines += new
         plans.append(BeatPlan(n, block.title, natural, target, action, scale))
     return "\n".join(lines) + "\n", plans
+
+
+def anchor_offset(block):
+    """Seconds from a beat's start to the Enter that runs its opening `clear`, or None if it has none."""
+    seen = []
+    for line in block.lines:
+        seen.append(line)
+        if line.strip() == "Enter":
+            return vidkit.estimate_duration("\n".join(seen)) if 'Type "clear"' in "\n".join(seen) else None
+    return None
