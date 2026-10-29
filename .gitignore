@@ -10,3 +10,9 @@ blob-report/
 !.editorconfig
 !.node-version
 !.nojekyll
+
+# VHS generated recordings
+/videos/recordings/
+
+# Downloaded VHS starter archive
+/chicanodev-vhs-starter.zip
