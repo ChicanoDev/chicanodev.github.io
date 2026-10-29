@@ -229,6 +229,17 @@ def _fmt_ts(seconds):
     return f"{int(seconds) // 60}:{int(seconds) % 60:02d}"
 
 
+def chapter_lines(titles, durations, card=2.0):
+    """YouTube chapter lines ('M:SS Title') for a compilation of [card][clip] parts."""
+    lines, start = [], 0.0
+    for title, duration in zip(titles, durations):
+        t = int(start)
+        stamp = f"{t // 3600}:{t % 3600 // 60:02d}:{t % 60:02d}" if t >= 3600 else f"{t // 60}:{t % 60:02d}"
+        lines.append(f"{stamp} {title}")
+        start += card + duration
+    return lines
+
+
 def merge_cue_sets(sets, gap=0.0):
     """Concatenate (cues, clip_duration) pairs into one timeline, `gap` seconds between clips."""
     merged = []
@@ -556,9 +567,28 @@ def _cmd_mux(argv):
     return 1 if missing and len(missing) == len(_select(argv)) else 0
 
 
+def _cmd_chapters(argv):
+    """Print YouTube chapter lines for each series' long video, ready to paste into the description."""
+    voiced = "--final" in argv
+    folder = "final/horizontal" if voiced else "horizontal"
+    names = [a for a in argv if not a.startswith("--")]
+    for series in dict.fromkeys(s for s, _ in EPISODES):
+        if names and series not in names:
+            continue
+        episodes = [(s, n) for s, n in EPISODES if s == series]
+        clips = [ROOT / "out" / folder / f"{episode_id(s, n)}.mp4" for s, n in episodes]
+        if not all(c.exists() for c in clips):
+            print(f"{series}: some clips are missing in out/{folder}")
+            return 1
+        titles = [parse_title((episode_dir(s, n) / "voiceover.md").read_text()).partition(": ")[2] for s, n in episodes]
+        print(f"--- {series}\n" + "\n".join(chapter_lines([t.capitalize() if t.islower() else t for t in titles],
+                                                         [_probe(c)[2] for c in clips], CARD_SECONDS)) + "\n")
+    return 0
+
+
 COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn,
             "verify": _cmd_verify, "compile": _cmd_compile,
-            "script": _cmd_script, "pace": _cmd_pace, "mux": _cmd_mux}
+            "script": _cmd_script, "pace": _cmd_pace, "mux": _cmd_mux, "chapters": _cmd_chapters}
 
 
 def main(argv=None):

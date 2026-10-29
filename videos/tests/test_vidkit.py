@@ -381,3 +381,17 @@ class TestMainRejectsUnknownEpisodes:
 
     def test_flags_are_not_treated_as_episode_names(self, capsys):
         assert vidkit.main(["pace", "linux-fs/01-no-c-drive"]) == 0
+
+
+class TestChapterLines:
+    def test_first_chapter_starts_at_zero_and_next_after_card_plus_clip(self):
+        lines = vidkit.chapter_lines(["Alpha", "Beta"], [60.0, 70.0], card=2.0)
+        assert lines == ["0:00 Alpha", "1:02 Beta"]
+
+    def test_three_parts_accumulate_cards_and_clips(self):
+        lines = vidkit.chapter_lines(["A", "B", "C"], [60.0, 70.0, 65.5], card=2.0)
+        assert lines == ["0:00 A", "1:02 B", "2:14 C"]
+
+    def test_hours_use_h_mm_ss(self):
+        lines = vidkit.chapter_lines(["A", "B"], [3700.0, 10.0], card=2.0)
+        assert lines[1].startswith("1:01:42 ")
