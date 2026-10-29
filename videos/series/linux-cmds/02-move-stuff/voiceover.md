@@ -6,13 +6,13 @@ Terminal beats match `body.tape` markers. Pause where the screen is busy; trim s
 > On screen: `echo`, `cat`, `cp`, `mv`, `mkdir`, `rm`, `rm -r`.
 
 ## [0:00-0:05] Hook
-Copy, move, rename and delete. Four commands, and one big warning you need to hear.
+Copy, move, rename, delete. Four commands, one big warning.
 
 ## [0:05-0:15] Cat
 First a file to play with. Echo can write text into a file, and cat prints it back out.
 
 ## [0:15-0:26] Cp
-Cp copies a file. Now we have two, a and b, with identical contents.
+Cp copies a file. Now we have two, a and b, with identical contents. Change one, and the other stays exactly as it was.
 
 ## [0:26-0:42] Mv
 Mv moves a file. It is also how you rename one, because renaming is just moving to a new name. Make a box folder, and move the file into it.
@@ -21,7 +21,7 @@ Mv moves a file. It is also how you rename one, because renaming is just moving 
 Rm deletes a file. And here is the warning: there is no trash can. When it is gone, it is gone.
 
 ## [0:53-1:03] Rm -r
-Folders need the recursive flag. Add dash r to remove a whole folder and everything inside it. Double check the path before you press enter, and never, ever run rm dash rf on slash.
+Add dash r to remove a whole folder and everything in it. Check the path before you press enter, and never run rm dash rf on slash.
 
 ## [1:03-1:10] CTA
 Next: reading files without opening an editor. Follow along at chicanodev dot com.

@@ -9,7 +9,7 @@ Terminal beats match `body.tape` markers. Pause where the screen is busy; trim s
 Six commands to find your way around any Linux machine. Start here.
 
 ## [0:05-0:13] Pwd
-Pwd prints where you are right now. It stands for print working directory, and it is the first thing to run when you feel lost.
+Pwd prints where you are right now, short for print working directory. Run it first whenever you feel lost.
 
 ## [0:13-0:24] Ls
 Ls lists what is here. Add dash a to reveal hidden files, the ones that start with a dot. Dash l adds sizes and dates.
@@ -18,7 +18,7 @@ Ls lists what is here. Add dash a to reveal hidden files, the ones that start wi
 Mkdir makes a folder. Cd moves you into it. Cd dot dot goes back up one level, and cd on its own always takes you home.
 
 ## [0:38-0:48] Touch
-Touch creates an empty file, instantly. It is the fastest way to make a placeholder.
+Touch creates an empty file, instantly. It is the fastest way to make a placeholder. It also updates the timestamp on a file that already exists.
 
 ## [0:48-1:00] Rmdir
 Rmdir only removes empty folders, so it refuses here. Remove the file first, and then the folder is safe to delete. We cover rm next.

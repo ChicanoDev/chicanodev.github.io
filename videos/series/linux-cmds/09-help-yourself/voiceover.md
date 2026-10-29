@@ -6,7 +6,7 @@ Terminal beats match `body.tape` markers. Pause where the screen is busy; trim s
 > On screen: `man ls`, `ls --help`, `history`, `alias`, `echo`.
 
 ## [0:00-0:05] Hook
-Nobody memorizes every command. Here is how professionals look things up, and it is not magic.
+Nobody memorizes every command. Here is how pros look things up.
 
 ## [0:05-0:19] Man
 Man opens the manual for any command. It opens in a pager, so use the arrow keys to scroll, and press q to leave.

@@ -6,7 +6,7 @@ Terminal beats match `body.tape` markers. Pause where the screen is busy; trim s
 > On screen: ASCII stacks via `cat bare-metal.txt` / `cat vm.txt`, then `nproc` and `free -h`.
 
 ## [0:00-0:07] Hook
-Where does your code actually run? Four answers: bare metal, virtual machines, containers, and the cloud. Let's start with the first two.
+Where does your code run? Four answers: bare metal, VMs, containers, the cloud. We start with two.
 
 ## [0:07-0:23] Bare metal
 Bare metal is the simple one. A real physical computer, with one operating system, running your apps directly on the hardware. Fast, and you get every bit of the machine. But it does one job, and if it dies, everything on it dies.

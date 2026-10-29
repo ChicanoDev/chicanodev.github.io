@@ -6,7 +6,7 @@ Terminal beats match `body.tape` markers. Pause where the screen is busy; trim s
 > On screen: `ping`, `curl`, `wget`, `tar`, `zip`, `unzip`.
 
 ## [0:00-0:05] Hook
-Can you reach the internet? Download a file? Bundle a folder? Six commands, one minute.
+Reach the internet? Download a file? Bundle a folder? Six commands.
 
 ## [0:05-0:18] Ping
 Ping sends tiny packets to a host and times the reply. Dash c limits how many. If you get replies, the network path works. Without dash c, it runs until you press control c.

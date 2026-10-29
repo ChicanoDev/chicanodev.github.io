@@ -297,3 +297,61 @@ class TestCheckClipRelativeTolerance:
 
     def test_ten_percent_is_a_real_problem(self):
         assert any("duration" in p for p in vidkit.check_clip("horizontal", 1920, 1080, 68.0, 76.0))
+
+
+class TestBeatPace:
+    def test_words_per_minute_for_each_beat(self):
+        beats = [vidkit.Beat(0, 6, "Hook", "one two three four five six"),
+                 vidkit.Beat(6, 36, "Body", " ".join(["w"] * 75))]
+        pace = vidkit.beat_pace(beats)
+        assert [(p.title, p.seconds, p.words) for p in pace] == [("Hook", 6, 6), ("Body", 30, 75)]
+        assert pace[0].wpm == pytest.approx(60)
+        assert pace[1].wpm == pytest.approx(150)
+
+    def test_too_fast_flag_above_limit(self):
+        fast = vidkit.beat_pace([vidkit.Beat(0, 10, "Fast", " ".join(["w"] * 40))])[0]   # 240 wpm
+        calm = vidkit.beat_pace([vidkit.Beat(0, 10, "Calm", " ".join(["w"] * 25))])[0]   # 150 wpm
+        assert fast.too_fast and not calm.too_fast
+
+    def test_very_slow_beat_is_flagged_so_the_read_does_not_drag(self):
+        slow = vidkit.beat_pace([vidkit.Beat(0, 20, "Slow", "just three words")])[0]
+        assert slow.too_slow
+
+
+class TestPlanMux:
+    def test_voice_shorter_than_video_keeps_video_length(self):
+        assert vidkit.plan_mux(video_seconds=70.0, audio_seconds=60.0) == (70.0, 0.0)
+
+    def test_voice_longer_than_video_holds_last_frame_with_tail(self):
+        final, hold = vidkit.plan_mux(video_seconds=70.0, audio_seconds=75.0, tail=1.0)
+        assert final == pytest.approx(76.0)
+        assert hold == pytest.approx(6.0)
+
+    def test_voice_ending_within_tail_of_video_extends_slightly(self):
+        final, hold = vidkit.plan_mux(video_seconds=70.0, audio_seconds=69.5, tail=1.0)
+        assert final == pytest.approx(70.5)
+        assert hold == pytest.approx(0.5)
+
+
+class TestFindAudio:
+    def test_finds_wav_by_episode_id(self, tmp_path):
+        (tmp_path / "linux-fs-01-no-c-drive.wav").write_bytes(b"x")
+        assert vidkit.find_audio("linux-fs-01-no-c-drive", tmp_path).name == "linux-fs-01-no-c-drive.wav"
+
+    def test_accepts_m4a_and_mp3(self, tmp_path):
+        (tmp_path / "a.m4a").write_bytes(b"x")
+        (tmp_path / "b.mp3").write_bytes(b"x")
+        assert vidkit.find_audio("a", tmp_path).suffix == ".m4a"
+        assert vidkit.find_audio("b", tmp_path).suffix == ".mp3"
+
+    def test_missing_returns_none(self, tmp_path):
+        assert vidkit.find_audio("nope", tmp_path) is None
+
+
+class TestNarrationText:
+    def test_only_spoken_words_with_beat_headers(self):
+        text = vidkit.narration_text(VOICEOVER)
+        assert "Linux has no C drive. Everything lives under one slash." in text
+        assert "[0:00-0:05] Hook" in text
+        assert "On screen" not in text
+        assert "Caption for socials" not in text

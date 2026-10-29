@@ -6,7 +6,7 @@ Terminal beats match `body.tape` markers. Pause where the screen is busy; trim s
 > On screen: `cut`, `sort`, pipe `|`, `sed`, `awk`, `tee`.
 
 ## [0:00-0:05] Hook
-Linux commands do one small thing each. The pipe is how you chain them together.
+Small tools, one job each. The pipe chains them together.
 
 ## [0:05-0:14] Data
 Here is a little data file: names and favorite languages, separated by commas. Four people, three languages.

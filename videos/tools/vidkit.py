@@ -181,6 +181,54 @@ def scale_cues(cues, factor):
     return [Cue(c.start * factor, c.end * factor, c.text) for c in cues]
 
 
+@dataclass(frozen=True)
+class Pace:
+    title: str
+    seconds: float
+    words: int
+    wpm: float
+    too_fast: bool
+    too_slow: bool
+
+
+def beat_pace(beats, fast_wpm=175, slow_wpm=90):
+    """Words per minute needed to read each beat inside its window."""
+    out = []
+    for b in beats:
+        seconds = b.end - b.start
+        words = len(b.text.split())
+        wpm = words / seconds * 60
+        out.append(Pace(b.title, seconds, words, wpm, wpm > fast_wpm, wpm < slow_wpm))
+    return out
+
+
+def plan_mux(video_seconds, audio_seconds, tail=1.0):
+    """(final_seconds, seconds_to_hold_the_last_frame). Video is never cut; it is held if the voice runs long."""
+    final = max(video_seconds, audio_seconds + tail)
+    return final, final - video_seconds
+
+
+AUDIO_EXTENSIONS = (".wav", ".m4a", ".mp3", ".aiff", ".aif", ".flac", ".ogg")
+
+
+def find_audio(episode_id, audio_dir):
+    for ext in AUDIO_EXTENSIONS:
+        candidate = Path(audio_dir) / f"{episode_id}{ext}"
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def narration_text(md_text):
+    """The words to read aloud, one block per beat, without notes or post copy."""
+    blocks = [f"[{_fmt_ts(b.start)}-{_fmt_ts(b.end)}] {b.title}\n{b.text}" for b in parse_voiceover(md_text)]
+    return "\n\n".join(blocks) + "\n"
+
+
+def _fmt_ts(seconds):
+    return f"{int(seconds) // 60}:{int(seconds) % 60:02d}"
+
+
 def merge_cue_sets(sets, gap=0.0):
     """Concatenate (cues, clip_duration) pairs into one timeline, `gap` seconds between clips."""
     merged = []
@@ -440,8 +488,72 @@ def _cmd_compile(argv):
     return 0
 
 
+def _cmd_script(argv):
+    for series, slug in _select(argv):
+        md = (episode_dir(series, slug) / "voiceover.md").read_text()
+        print(f"=== {series}/{slug}: {parse_title(md)}\n")
+        print(narration_text(md))
+    return 0
+
+
+def _cmd_pace(argv):
+    flagged = False
+    for series, slug in _select(argv):
+        beats = parse_voiceover((episode_dir(series, slug) / "voiceover.md").read_text())
+        print(f"=== {series}/{slug}")
+        for p in beat_pace(beats):
+            note = "  <- TOO FAST, trim words" if p.too_fast else "  <- slow, add a line or pause" if p.too_slow else ""
+            print(f"  {p.title:<18} {p.seconds:>4.0f}s  {p.words:>3} words  {p.wpm:>4.0f} wpm{note}")
+            flagged = flagged or p.too_fast
+    return 1 if flagged else 0
+
+
+def _audio_seconds(path):
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+                         check=True, capture_output=True, text=True).stdout.strip()
+    return float(out)
+
+
+def _cmd_mux(argv):
+    """Voice recording + silent render -> finished video with captions timed to the voice."""
+    audio_dir = ROOT / "audio"
+    missing = []
+    for series, slug in _select(argv):
+        eid = episode_id(series, slug)
+        audio = find_audio(eid, audio_dir)
+        if audio is None:
+            missing.append(eid)
+            continue
+        voice = _audio_seconds(audio)
+        for orient in ORIENTATIONS:
+            raw = ROOT / "build" / eid / f"{orient}-raw.mp4"
+            if not raw.exists():
+                print(f"{eid}: {raw.name} missing. Run: python3 tools/vidkit.py render {eid}")
+                return 1
+            video = _probe(raw)[2]
+            final, hold = plan_mux(video, voice)
+            srt = write_srt(series, slug, voice, f"final-{orient}.srt")
+            out = ROOT / "out" / "final" / orient
+            out.mkdir(parents=True, exist_ok=True)
+            shutil.copy(srt, out / f"{eid}.srt")
+            vf = f"subtitles=build/{eid}/{srt.name}:force_style='{CAPTION_STYLE[orient]}'"
+            if hold > 0.05:
+                vf = f"tpad=stop_mode=clone:stop_duration={hold:.2f}," + vf
+            _docker("-y", "-i", f"build/{eid}/{orient}-raw.mp4", "-i", f"audio/{audio.name}",
+                    "-map", "0:v", "-map", "1:a", "-vf", vf,
+                    "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,apad", "-t", f"{final:.2f}", "-ac", "2", "-ar", "48000",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
+                    f"out/final/{orient}/{eid}.mp4", entrypoint="ffmpeg")
+        verdict = f"video held {hold:.1f}s so your voice fits" if hold > 0.05 else "voice fits inside the video"
+        print(f"{eid}: voice {voice:.1f}s, video {video:.1f}s, final {final:.1f}s ({verdict})")
+    for eid in missing:
+        print(f"{eid}: no recording found. Put it at audio/{eid}.wav")
+    return 1 if missing and len(missing) == len(_select(argv)) else 0
+
+
 COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn,
-            "verify": _cmd_verify, "compile": _cmd_compile}
+            "verify": _cmd_verify, "compile": _cmd_compile,
+            "script": _cmd_script, "pace": _cmd_pace, "mux": _cmd_mux}
 
 
 def main(argv=None):

@@ -21,7 +21,7 @@ Grep searches inside files for text. Dash r searches every file in a folder, and
 Add dash i to ignore upper and lower case, or dash l to list just the file names that match.
 
 ## [0:58-1:05] Recap
-Find for names, locate for speed, grep for contents. Together they can track down anything on a machine. That is the whole toolbox.
+Find for names, locate for speed, grep for contents. That is the whole toolbox.
 
 ## [1:05-1:12] CTA
 Next: the pipe, and cutting text up. Follow along at chicanodev dot com.

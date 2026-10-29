@@ -18,7 +18,7 @@ Var lib keeps the state of services, like databases and package records. Var cac
 Slash tmp is a scratch pad. Any user can write here, and files are usually wiped on reboot, so never keep anything important in it.
 
 ## [0:44-0:57] Boot
-Slash boot holds what the machine needs to start up: the kernel and the boot loader files. Leave it alone unless you know exactly why you are in there. Uname dash r tells you which kernel you are running.
+Slash boot holds what the machine needs to start up: the kernel and boot loader files. Leave it alone unless you know why. Uname dash r shows the kernel you are running.
 
 ## [0:57-1:10] CTA
 Next time: the strange folders that are not really on disk at all. Follow along at chicanodev dot com.

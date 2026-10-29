@@ -6,7 +6,7 @@ Terminal beats match `body.tape` markers. Pause where the screen is busy; trim s
 > On screen: `df -h`, `du -sh`, `ps`, `top`, `kill`, `uname`, `hostname`.
 
 ## [0:00-0:05] Hook
-Is the disk full? What is eating the memory? Check your system's health in seconds.
+Disk full? Memory gone? Check your system's health in seconds.
 
 ## [0:05-0:16] Df
 Df shows disk space. Dash h makes the sizes human readable, and use percent tells you how full each disk is.
@@ -21,10 +21,10 @@ Ps lists running processes, each with a process id. This asks for just the id an
 Top shows the live picture: load average, tasks, and CPU. Press q to quit it. Htop is a friendlier version if you have it installed.
 
 ## [0:52-1:06] Kill
-Kill stops a process by its id. Start a sleep in the background, find it with pgrep, and kill it.
+Kill stops a process by its id. Start a sleep in the background, find it with pgrep, and kill it. The process gets a chance to shut down cleanly.
 
 ## [1:06-1:12] Uname
-And two quick identity checks. Uname dash s r shows the kernel, and hostname shows this machine's name.
+Uname dash s r shows the kernel. Hostname shows this machine's name.
 
 ## [1:12-1:18] CTA
 Next: networking and archives. Follow along at chicanodev dot com.

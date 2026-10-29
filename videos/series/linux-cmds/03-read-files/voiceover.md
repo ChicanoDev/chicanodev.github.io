@@ -6,7 +6,7 @@ Terminal beats match `body.tape` markers. Pause where the screen is busy; trim s
 > On screen: `head`, `tail`, `tail -f`, `diff`.
 
 ## [0:00-0:05] Hook
-A log file with two hundred lines. You do not need to read all of it. Here is how.
+Two hundred log lines. You do not need to read them all.
 
 ## [0:05-0:15] Head
 Head shows the start of a file. By default ten lines, or ask for exactly how many with dash and a number.

@@ -19,3 +19,6 @@ __pycache__/
 
 # Downloaded VHS starter archive
 /chicanodev-vhs-starter.zip
+
+# Voice recordings (large, personal)
+/videos/audio/
