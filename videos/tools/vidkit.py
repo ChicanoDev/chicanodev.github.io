@@ -630,10 +630,71 @@ def _cmd_check_audio(argv):
     return 1 if failed else 0
 
 
+def work_dir(series, slug):
+    return ROOT / "out" / "intermediate" / episode_id(series, slug)
+
+
+def _print_review(segments, folder):
+    """Print per-segment transcript review notes. Returns False if any transcript is missing."""
+    import transcribe
+    complete = True
+    for seg in segments:
+        if not transcribe.exists(folder / "transcript", seg.id):
+            print(f"-- {seg.id}: no transcript yet. Run: python3 tools/vidkit.py transcribe <episode>")
+            complete = False
+            continue
+        t = transcribe.load(folder / "transcript", seg.id)
+        flags = transcribe.review_flags(t.words, seg.text)
+        note = " (edited)" if t.has_edits else ""
+        print(f"{'OK' if not flags else '??'} {seg.id}{note}  -> transcript/{seg.id}.yaml")
+        for f in flags:
+            if f.kind == "low-confidence":
+                print(f"     {f.start:6.2f}s low-confidence: '{f.word}'")
+            else:
+                heard = f"'{f.word}'" if f.word else "nothing"
+                print(f"     {f.start:6.2f}s differs-from-script: heard {heard}, script has '{f.expected or '(nothing)'}'")
+    return complete
+
+
+def _cmd_transcribe(argv):
+    """Ingest takes, transcribe changed ones with local whisper, then show what to double-check."""
+    import narration
+    import transcribe
+    engine = None
+    for series, slug in _select(argv):
+        folder = episode_dir(series, slug)
+        segments = narration.episode_segments(folder)
+        selected = narration.load_alignment(folder).get("selected") or {}
+        print(f"=== {series}/{slug}")
+        try:
+            report = narration.prepare(segments, folder / "narration", work_dir(series, slug), selected)
+        except (narration.MissingTakes, narration.AmbiguousTake, narration.BadAudio) as err:
+            print(f"!! {err}")
+            return 1
+        for item in report:
+            engine = engine or transcribe.whisper_engine()
+            status = transcribe.ensure(item.segment, item.audio_sha, item.wav, folder / "transcript", engine, "--force" in argv)
+            print(f"   {item.segment.id}: audio {item.status}, transcript {status}")
+        _print_review(segments, folder)
+    return 0
+
+
+def _cmd_transcript(argv):
+    """Show transcript review notes without running anything. Edit transcript/<segment>.yaml to fix words."""
+    import narration
+    complete = True
+    for series, slug in _select(argv):
+        folder = episode_dir(series, slug)
+        print(f"=== {series}/{slug}")
+        complete = _print_review(narration.episode_segments(folder), folder) and complete
+    return 0 if complete else 1
+
+
 COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn,
             "verify": _cmd_verify, "compile": _cmd_compile,
             "script": _cmd_script, "pace": _cmd_pace, "mux": _cmd_mux, "chapters": _cmd_chapters,
-            "segments": _cmd_segments, "check-audio": _cmd_check_audio}
+            "segments": _cmd_segments, "check-audio": _cmd_check_audio,
+            "transcribe": _cmd_transcribe, "transcript": _cmd_transcript}
 
 
 def main(argv=None):

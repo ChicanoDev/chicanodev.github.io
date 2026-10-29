@@ -74,3 +74,83 @@ class TestCheckAudioCommand:
         (episode / "alignment.yaml").write_text("selected:\n  01-hook: 01-hook.take2.wav\n")
         vidkit.main(["check-audio", "demo/01-ep"])
         assert "01-hook.take2.wav" in capsys.readouterr().out
+
+
+SPOKEN = {"01-hook": "Linux has no sea drive.", "02-root-home": "That slash is root.", "03-etc-config": "Config lives here."}
+
+
+@pytest.fixture
+def recorded(episode, monkeypatch):
+    import transcribe
+    d = episode / "narration"
+    d.mkdir()
+    for sid in SPOKEN:
+        synth(d / f"{sid}.wav", 1.5, volume=4)
+    calls = []
+
+    def fake_engine(*a, **k):
+        def run(wav):
+            calls.append(Path(wav).stem)
+            toks = SPOKEN[Path(wav).stem].split()
+            return [transcribe.Word(i * 0.4, i * 0.4 + 0.3, t, 0.95) for i, t in enumerate(toks)]
+        return run
+
+    monkeypatch.setattr(transcribe, "whisper_engine", fake_engine)
+    return episode, calls
+
+
+class TestTranscribeCommand:
+    def test_writes_editable_transcripts_and_reports_flags(self, recorded, capsys):
+        episode, calls = recorded
+        assert vidkit.main(["transcribe", "demo/01-ep"]) == 0
+        assert (episode / "transcript" / "01-hook.yaml").exists()
+        out = capsys.readouterr().out
+        assert "sea" in out and "differs-from-script" in out
+
+    def test_second_run_transcribes_nothing(self, recorded, capsys):
+        episode, calls = recorded
+        vidkit.main(["transcribe", "demo/01-ep"])
+        calls.clear()
+        vidkit.main(["transcribe", "demo/01-ep"])
+        assert calls == []
+        assert "cached" in capsys.readouterr().out
+
+    def test_replacing_one_take_retranscribes_only_it(self, recorded, capsys):
+        episode, calls = recorded
+        vidkit.main(["transcribe", "demo/01-ep"])
+        calls.clear()
+        synth(episode / "narration" / "02-root-home.wav", 2.0, freq=700, volume=4)
+        vidkit.main(["transcribe", "demo/01-ep"])
+        assert calls == ["02-root-home"]
+
+    def test_missing_takes_exit_1(self, episode, capsys):
+        assert vidkit.main(["transcribe", "demo/01-ep"]) == 1
+        assert "01-hook" in capsys.readouterr().out
+
+
+class TestTranscriptCommand:
+    def test_shows_flags_without_running_engine(self, recorded, capsys):
+        episode, calls = recorded
+        vidkit.main(["transcribe", "demo/01-ep"])
+        calls.clear()
+        capsys.readouterr()
+        assert vidkit.main(["transcript", "demo/01-ep"]) == 0
+        assert calls == []
+        assert "sea" in capsys.readouterr().out
+
+    def test_corrected_word_clears_flag(self, recorded, capsys):
+        import yaml
+        episode, _ = recorded
+        vidkit.main(["transcribe", "demo/01-ep"])
+        path = episode / "transcript" / "01-hook.yaml"
+        data = yaml.safe_load(path.read_text())
+        data["words"][3]["text"] = "C"
+        path.write_text(yaml.safe_dump(data, sort_keys=False))
+        capsys.readouterr()
+        vidkit.main(["transcript", "demo/01-ep"])
+        out = capsys.readouterr().out
+        assert "sea" not in out and "edited" in out
+
+    def test_before_transcribing_tells_user_what_to_run(self, episode, capsys):
+        assert vidkit.main(["transcript", "demo/01-ep"]) == 1
+        assert "transcribe" in capsys.readouterr().out
