@@ -1,7 +1,9 @@
 """vidkit: build, lint, caption and render the ChicanoDev VHS episodes."""
 import re
+import sys
 import textwrap
 from dataclasses import dataclass
+from pathlib import Path
 
 _SLEEP = re.compile(r"^Sleep\s+([\d.]+)(ms|s)\b")
 _SET_SPEED = re.compile(r"^Set\s+TypingSpeed\s+([\d.]+)(ms|s)\b")
@@ -20,7 +22,7 @@ def _to_seconds(value, unit):
     return float(value) / 1000 if unit == "ms" else float(value)
 
 
-def estimate_duration(tape_text, default_typing_ms=50):
+def estimate_duration(tape_text, default_typing_ms=70):
     """Seconds of visible recording a tape produces (Hide..Show is cut by VHS)."""
     speed = default_typing_ms / 1000
     hidden = False
@@ -166,3 +168,65 @@ def lint_episode(tape_text, voiceover_md, min_seconds=60, max_seconds=90,
 
 def build_tape(settings_text, body_text, output_path):
     return f"Output {output_path}\n{settings_text.rstrip()}\n\n{body_text.rstrip()}\n"
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+EPISODES = [
+    ("linux-fs", "01-no-c-drive"),
+    ("linux-fs", "02-where-programs-live"),
+    ("linux-fs", "03-where-things-change"),
+    ("linux-fs", "04-the-weird-ones"),
+    ("linux-cmds", "01-get-around"),
+    ("linux-cmds", "02-move-stuff"),
+    ("linux-cmds", "03-read-files"),
+    ("linux-cmds", "04-find-anything"),
+    ("linux-cmds", "05-pipes-and-text"),
+    ("linux-cmds", "06-users-and-permissions"),
+    ("linux-cmds", "07-system-health"),
+    ("linux-cmds", "08-network-and-archives"),
+    ("linux-cmds", "09-help-yourself"),
+    ("where-code-runs", "01-bare-metal-vs-vm"),
+    ("where-code-runs", "02-containers"),
+    ("where-code-runs", "03-the-cloud"),
+]
+
+
+def episode_dir(series, slug):
+    return ROOT / "series" / series / slug
+
+
+def _cmd_lint(argv):
+    wanted = set(argv)
+    failed = False
+    for series, slug in EPISODES:
+        name = f"{series}/{slug}"
+        if wanted and name not in wanted and slug not in wanted:
+            continue
+        folder = episode_dir(series, slug)
+        if not (folder / "body.tape").exists() or not (folder / "voiceover.md").exists():
+            print(f"-- {name}: missing files")
+            failed = failed or not wanted
+            continue
+        tape, voiceover = (folder / "body.tape").read_text(), (folder / "voiceover.md").read_text()
+        problems = lint_episode(tape, voiceover)
+        print(f"{'OK' if not problems else '!!'} {name}  ~{estimate_duration(tape):.1f}s")
+        for problem in problems:
+            print(f"     {problem}")
+        failed = failed or bool(problems)
+    return 1 if failed else 0
+
+
+COMMANDS = {"lint": _cmd_lint}
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv or argv[0] not in COMMANDS:
+        print(f"usage: vidkit.py {{{'|'.join(COMMANDS)}}} [episode ...]")
+        return 2
+    return COMMANDS[argv[0]](argv[1:])
+
+
+if __name__ == "__main__":
+    sys.exit(main())
