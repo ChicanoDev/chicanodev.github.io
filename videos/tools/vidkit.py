@@ -1,10 +1,13 @@
 """vidkit: build, lint, caption and render the ChicanoDev VHS episodes."""
 import re
+import textwrap
+from dataclasses import dataclass
 
 _SLEEP = re.compile(r"^Sleep\s+([\d.]+)(ms|s)\b")
 _SET_SPEED = re.compile(r"^Set\s+TypingSpeed\s+([\d.]+)(ms|s)\b")
 _TYPE = re.compile(r'^Type(?:@([\d.]+)(ms|s))?\s+(["\'`])(.*)\3\s*$')
 _BEAT = re.compile(r"^#\s*@beat\s+(\S+)\s*(.*)$")
+_VO_HEADING = re.compile(r"^##\s*\[(\d+:\d+(?:\.\d+)?)-(\d+:\d+(?:\.\d+)?)\]\s*(.*)$")
 
 
 def parse_timestamp(text):
@@ -52,3 +55,72 @@ def parse_tape_beats(tape_text):
         if m := _BEAT.match(line.strip()):
             beats.append((parse_timestamp(m.group(1)), m.group(2).strip()))
     return beats
+
+
+@dataclass(frozen=True)
+class Beat:
+    start: float
+    end: float
+    title: str
+    text: str
+
+
+@dataclass(frozen=True)
+class Cue:
+    start: float
+    end: float
+    text: str
+
+
+def parse_voiceover(md_text):
+    """Beats from '## [M:SS-M:SS] Title' sections; '>' note lines and other headings are skipped."""
+    beats = []
+    current = None
+    for line in md_text.splitlines():
+        if line.startswith("#"):
+            if current:
+                beats.append(current)
+            current = None
+            if m := _VO_HEADING.match(line):
+                current = [parse_timestamp(m.group(1)), parse_timestamp(m.group(2)), m.group(3).strip(), []]
+        elif current is not None and line.strip() and not line.lstrip().startswith(">"):
+            current[3].append(line.strip())
+    if current:
+        beats.append(current)
+    return [Beat(start, end, title, " ".join(lines)) for start, end, title, lines in beats]
+
+
+def make_cues(beats, max_chars=32, max_lines=2):
+    """Caption cues: wrapped to max_chars, max_lines per cue, timed by length inside each beat."""
+    cues = []
+    for beat in beats:
+        lines = textwrap.wrap(beat.text, width=max_chars)
+        chunks = ["\n".join(lines[i:i + max_lines]) for i in range(0, len(lines), max_lines)]
+        total = sum(len(c.replace("\n", "")) for c in chunks)
+        span = beat.end - beat.start
+        cursor = beat.start
+        for n, chunk in enumerate(chunks):
+            end = beat.end if n == len(chunks) - 1 else cursor + span * len(chunk.replace("\n", "")) / total
+            cues.append(Cue(cursor, end, chunk))
+            cursor = end
+    return cues
+
+
+def _srt_time(seconds):
+    millis = round(seconds * 1000)
+    hours, millis = divmod(millis, 3_600_000)
+    minutes, millis = divmod(millis, 60_000)
+    secs, millis = divmod(millis, 1000)
+    return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
+
+
+def format_srt(cues):
+    blocks = [
+        f"{n}\n{_srt_time(c.start)} --> {_srt_time(c.end)}\n{c.text}\n"
+        for n, c in enumerate(cues, 1)
+    ]
+    return "\n".join(blocks)
+
+
+def offset_cues(cues, offset):
+    return [Cue(c.start + offset, c.end + offset, c.text) for c in cues]

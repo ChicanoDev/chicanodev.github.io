@@ -59,3 +59,96 @@ class TestParseTapeBeats:
 
     def test_no_markers_gives_empty_list(self):
         assert vidkit.parse_tape_beats("Sleep 1s") == []
+
+
+VOICEOVER = """\
+# Linux has no C drive
+
+> On screen: ls /
+
+## [0:00-0:05] Hook
+Linux has no C drive.
+Everything lives under one slash.
+
+## [0:05-0:20] Root
+That slash is root, the top of the tree.
+
+## Post copy
+Caption for socials. Not narration.
+"""
+
+
+class TestParseVoiceover:
+    def test_only_timestamped_headings_become_beats(self):
+        beats = vidkit.parse_voiceover(VOICEOVER)
+        assert [b.title for b in beats] == ["Hook", "Root"]
+
+    def test_beat_times(self):
+        beats = vidkit.parse_voiceover(VOICEOVER)
+        assert (beats[0].start, beats[0].end) == (0, 5)
+        assert (beats[1].start, beats[1].end) == (5, 20)
+
+    def test_text_joins_lines_and_drops_notes(self):
+        beats = vidkit.parse_voiceover(VOICEOVER + "\n## [0:20-0:25] Next\n> note\nHi there.\n")
+        assert beats[0].text == "Linux has no C drive. Everything lives under one slash."
+        assert beats[2].text == "Hi there."
+
+    def test_post_copy_section_is_excluded_from_last_beat(self):
+        beats = vidkit.parse_voiceover(VOICEOVER)
+        assert "Caption" not in beats[1].text
+
+
+def beat(start, end, text):
+    return vidkit.Beat(start=start, end=end, title="t", text=text)
+
+
+class TestMakeCues:
+    def test_short_text_is_one_cue_spanning_the_beat(self):
+        cues = vidkit.make_cues([beat(0, 5, "Hello there")])
+        assert [(c.start, c.end, c.text) for c in cues] == [(0, 5, "Hello there")]
+
+    def test_lines_never_exceed_max_chars(self):
+        text = "That slash is root, the top of the tree and every disk hangs off it."
+        cues = vidkit.make_cues([beat(0, 10, text)], max_chars=20)
+        for cue in cues:
+            assert all(len(line) <= 20 for line in cue.text.split("\n"))
+
+    def test_cue_has_at_most_two_lines(self):
+        text = "word " * 40
+        cues = vidkit.make_cues([beat(0, 10, text.strip())], max_chars=20)
+        assert all(len(c.text.split("\n")) <= 2 for c in cues)
+
+    def test_cues_tile_the_beat_without_gaps_or_overlap(self):
+        text = "word " * 40
+        cues = vidkit.make_cues([beat(5, 15, text.strip())], max_chars=20)
+        assert cues[0].start == 5 and cues[-1].end == 15
+        for a, b in zip(cues, cues[1:]):
+            assert a.end == pytest.approx(b.start)
+
+    def test_longer_cues_get_more_time(self):
+        cues = vidkit.make_cues([beat(0, 10, "aaaa bbbb cccc dddd eeee ffff")], max_chars=9)
+        assert len(cues) == 2
+        assert cues[0].end - cues[0].start > cues[1].end - cues[1].start
+
+    def test_multiple_beats_stay_in_their_windows(self):
+        cues = vidkit.make_cues([beat(0, 5, "One"), beat(5, 9, "Two")])
+        assert (cues[1].start, cues[1].end) == (5, 9)
+
+
+class TestFormatSrt:
+    def test_numbers_and_timestamps(self):
+        out = vidkit.format_srt([vidkit.Cue(0, 5.5, "Hi"), vidkit.Cue(65.25, 70, "Bye\nnow")])
+        assert out == (
+            "1\n00:00:00,000 --> 00:00:05,500\nHi\n\n"
+            "2\n00:01:05,250 --> 00:01:10,000\nBye\nnow\n"
+        )
+
+    def test_hours_roll_over(self):
+        out = vidkit.format_srt([vidkit.Cue(3661, 3662, "x")])
+        assert "01:01:01,000 --> 01:01:02,000" in out
+
+
+class TestOffsetCues:
+    def test_shifts_both_edges(self):
+        shifted = vidkit.offset_cues([vidkit.Cue(1, 2, "a")], 10)
+        assert (shifted[0].start, shifted[0].end, shifted[0].text) == (11, 12, "a")
