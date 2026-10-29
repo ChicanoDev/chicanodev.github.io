@@ -186,6 +186,11 @@ class TestLintEpisode:
         tape, vo = make_episode(typed="x" * 40)
         assert any("32" in p for p in vidkit.lint_episode(tape, vo))
 
+    def test_hidden_setup_lines_are_exempt_from_width_limit(self):
+        tape, vo = make_episode()
+        tape = "Hide\nType \"" + "x" * 80 + "\"\nShow\n" + tape
+        assert vidkit.lint_episode(tape, vo) == []
+
     def test_beat_count_mismatch(self):
         tape, vo = make_episode()
         tape += "# @beat 0:30 Extra\n"

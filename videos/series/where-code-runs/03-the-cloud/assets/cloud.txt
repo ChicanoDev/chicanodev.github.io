@@ -1,0 +1,7 @@
+
+ THE CLOUD
+ = rented computers
+
+ IaaS  rent the machine
+ PaaS  rent the platform
+ SaaS  rent the whole app

@@ -8,6 +8,12 @@ RUN apt-get update \
       plocate file man-db less \
  && rm -rf /var/lib/apt/lists/*
 
+# Container images strip man pages; the "help yourself" episode needs them back.
+RUN rm -f /etc/dpkg/dpkg.cfg.d/*docker* /etc/dpkg/dpkg.cfg.d/*excludes* \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends --reinstall coreutils grep manpages \
+ && rm -rf /var/lib/apt/lists/*
+
 # Debian trixie has no IBM Plex package; brand font comes from the pinned upstream release.
 RUN curl -fsSL -o /tmp/plex-mono.zip \
       "https://github.com/IBM/plex/releases/download/%40ibm%2Fplex-mono%401.1.0/ibm-plex-mono.zip" \

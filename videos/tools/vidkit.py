@@ -149,9 +149,14 @@ def lint_episode(tape_text, voiceover_md, min_seconds=60, max_seconds=90,
     if not min_words <= words <= max_words:
         problems.append(f"voiceover has {words} words, want {min_words}-{max_words}")
 
+    hidden = False
     for raw in tape_text.splitlines():
-        m = _TYPE.match(raw.strip())
-        if m and len(m.group(4)) > max_typed:
+        line = raw.strip()
+        if line in ("Hide", "Show"):
+            hidden = line == "Hide"
+            continue
+        m = _TYPE.match(line)
+        if m and not hidden and len(m.group(4)) > max_typed:
             problems.append(f"typed line over {max_typed} chars: {m.group(4)[:40]!r}")
 
     markers = [(n, m) for n, raw in enumerate(tape_text.splitlines())

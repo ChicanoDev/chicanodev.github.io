@@ -1,0 +1,6 @@
+
+ WHERE CODE RUNS
+ bare metal : you own the box
+ VM         : slice of a box
+ container  : slice of an OS
+ cloud      : rent any of these
