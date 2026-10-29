@@ -101,8 +101,9 @@ const showAnalytics = import.meta.env.PROD && site.analyticsId.length > 0;
         root.style.color = '';
         function sync() {
           if (!button) return;
+          // Label names the next theme. Do not use aria-pressed; that would
+          // fight a changing action label and imply a sticky pressed state.
           var dark = root.getAttribute('data-theme') !== 'light';
-          button.setAttribute('aria-pressed', dark ? 'true' : 'false');
           button.setAttribute(
             'aria-label',
             dark ? 'Switch to light mode' : 'Switch to dark mode'

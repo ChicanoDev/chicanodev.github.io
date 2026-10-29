@@ -49,7 +49,7 @@ tags: [shell]
 Write the article here. Do not add an H1. The title field is the page heading.
 ```
 
-`updatedDate` and `draft: true` are optional. Drafts are omitted from production builds.
+`updatedDate` and `draft: true` are optional. Drafts are omitted from production builds, including pages, RSS, and the sitemap. `src/content/posts/draft-preview.md` is a fixture used by the production checks to prove that filtering.
 
 For a YouTube embed or a local terminal recording, use MDX (`your-slug.mdx`) and the same front matter:
 

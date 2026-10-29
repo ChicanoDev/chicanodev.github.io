@@ -69,7 +69,25 @@ test('required pages and preserved copy', () => {
   assert.match(welcome, new RegExp(`rel="canonical" href="${site}/posts/welcome/"`));
   assert.match(welcome, /property="og:title"/);
   assert.match(welcome, /name="description"/);
-  assert.match(welcome, /application\/ld\+json/);
+  const jsonLdMatch = welcome.match(
+    /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
+  );
+  assert.ok(jsonLdMatch, 'missing BlogPosting JSON-LD');
+  const jsonLd = JSON.parse(jsonLdMatch[1]);
+  assert.equal(jsonLd['@context'], 'https://schema.org');
+  assert.equal(jsonLd['@type'], 'BlogPosting');
+  assert.equal(jsonLd.headline, 'Welcome to ChicanoDev');
+  assert.equal(
+    jsonLd.description,
+    'Why I started ChicanoDev, how a Compaq Portable helped launch my career in technology, and why I believe engineering knowledge should be shared.',
+  );
+  assert.equal(jsonLd.datePublished, '2026-10-29T03:43:41.000Z');
+  assert.equal(jsonLd.dateModified, '2026-10-29T03:43:41.000Z');
+  assert.equal(jsonLd.author['@type'], 'Person');
+  assert.equal(jsonLd.author.name, 'Dave Vigil');
+  assert.equal(jsonLd.author.url, 'https://github.com/chicanodev');
+  assert.equal(jsonLd.mainEntityOfPage, `${site}/posts/welcome/`);
+  assert.equal(jsonLd.keywords, 'linux, devops, programming, chicanodev');
 
   for (const urlPath of [
     '/posts/',
@@ -105,6 +123,38 @@ test('required pages and preserved copy', () => {
     .filter((file) => file.endsWith('.js'))
     .reduce((total, file) => total + fs.statSync(file).size, 0);
   assert.ok(jsBytes < 5000, `local JavaScript is ${jsBytes} bytes`);
+});
+
+test('draft posts stay out of production output', () => {
+  const draftSource = fs.readFileSync('src/content/posts/draft-preview.md', 'utf8');
+  assert.match(draftSource, /^draft:\s*true\s*$/m);
+  assert.match(draftSource, /__CHICANODEV_DRAFT_FIXTURE__/);
+
+  assert.equal(fs.existsSync(path.join(dist, 'posts/draft-preview/index.html')), false);
+  assert.equal(fs.existsSync(path.join(dist, 'categories/draft-fixture/index.html')), false);
+  assert.equal(fs.existsSync(path.join(dist, 'tags/draft-fixture/index.html')), false);
+
+  const surfaces = [
+    readPage('/'),
+    readPage('/posts/'),
+    readPage('/archives/'),
+    readPage('/categories/'),
+    readPage('/tags/'),
+    fs.readFileSync(path.join(dist, 'rss.xml'), 'utf8'),
+    fs.readFileSync(path.join(dist, 'feed.xml'), 'utf8'),
+    fs.readFileSync(path.join(dist, 'sitemap-index.xml'), 'utf8'),
+    ...fs
+      .readdirSync(dist)
+      .filter((name) => name.startsWith('sitemap') && name.endsWith('.xml'))
+      .map((name) => fs.readFileSync(path.join(dist, name), 'utf8')),
+  ];
+
+  for (const surface of surfaces) {
+    assert.doesNotMatch(surface, /__CHICANODEV_DRAFT_FIXTURE__/);
+    assert.doesNotMatch(surface, /DRAFT ONLY — unpublished fixture/);
+    assert.doesNotMatch(surface, /draft-preview/);
+    assert.doesNotMatch(surface, /draft-fixture/);
+  }
 });
 
 test('internal links resolve', () => {

@@ -57,7 +57,11 @@ test('theme toggle persists an explicit choice', async ({ page }) => {
 
 test('article cards are clickable', async ({ page }) => {
   await page.goto('/');
-  await page.locator('.card').first().click({ position: { x: 24, y: 80 } });
+  await page
+    .getByRole('article')
+    .filter({ has: page.getByRole('heading', { name: 'Welcome to ChicanoDev' }) })
+    .getByRole('link', { name: 'Welcome to ChicanoDev' })
+    .click();
   await expect(page).toHaveURL(/\/posts\/welcome\/$/);
 });
 
