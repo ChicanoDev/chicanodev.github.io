@@ -13,6 +13,9 @@ blob-report/
 
 # VHS generated recordings
 /videos/recordings/
+/videos/build/
+/videos/out/
+__pycache__/
 
 # Downloaded VHS starter archive
 /chicanodev-vhs-starter.zip
