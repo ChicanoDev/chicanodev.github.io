@@ -68,7 +68,7 @@ Put local videos in `public/recordings/`. `src` must be a site path such as `/re
 
 ## Theme
 
-Dark is the signature theme. The first visit follows the system preference. The header control saves an explicit choice in `localStorage` under `chicanodev-theme`.
+Dark uses the Dracula palette and is the signature theme. Light uses Alucard, Dracula's light variant. The first visit follows the system preference. The header control saves an explicit choice in `localStorage` under `chicanodev-theme`.
 
 ## Analytics
 

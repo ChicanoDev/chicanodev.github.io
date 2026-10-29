@@ -79,3 +79,36 @@ test('navigation reaches About', async ({ page }) => {
   await expect(page).toHaveURL(/\/about\/$/);
   await expect(page.getByRole('heading', { level: 1, name: 'About ChicanoDev' })).toBeVisible();
 });
+
+test('homepage hero carries a decorative ridgeline', async ({ page }) => {
+  await page.goto('/');
+  const art = page.locator('svg[data-ridgeline]');
+  await expect(art).toHaveCount(1);
+  await expect(art).toHaveAttribute('aria-hidden', 'true');
+  await expect(art.locator('path').first()).toBeAttached();
+});
+
+for (const path of ['/', '/about/', '/posts/welcome/', '/posts/', '/categories/']) {
+  test(`light theme has no serious a11y violations on ${path}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto(path);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expectNoSeriousViolations(page);
+  });
+}
+
+test('post cards show reading time', async ({ page }) => {
+  await page.goto('/');
+  const card = page
+    .getByRole('article')
+    .filter({ has: page.getByRole('heading', { name: 'Welcome to ChicanoDev' }) });
+  await expect(card).toContainText(/\d+ min read/);
+});
+
+test('404 is on theme and points home', async ({ page }) => {
+  await page.goto('/404.html');
+  await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible();
+  await expect(page.getByText("It's alive? Not this page.")).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Go to the homepage' })).toHaveAttribute('href', '/');
+  await expectNoSeriousViolations(page);
+});

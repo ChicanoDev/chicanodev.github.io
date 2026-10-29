@@ -61,24 +61,18 @@ const jsonLd = JSON.stringify({
       <h1>{post.data.title}</h1>
       <p class="lede">{post.data.description}</p>
       {post.data.categories.length > 0 && (
-        <p class="tax">
-          Topics:{' '}
-          {post.data.categories.map((name, index) => (
-            <span>
-              {index > 0 && ', '}
-              <a href={`/categories/${slugify(name)}/`}>{name}</a>
-            </span>
+        <p class="tax chip-row">
+          <span class="tax-label">Topics:</span>
+          {post.data.categories.map((name) => (
+            <a class="chip" href={`/categories/${slugify(name)}/`}>{name}</a>
           ))}
         </p>
       )}
       {post.data.tags.length > 0 && (
-        <p class="tax">
-          Tags:{' '}
-          {post.data.tags.map((name, index) => (
-            <span>
-              {index > 0 && ', '}
-              <a href={`/tags/${slugify(name)}/`}>{name}</a>
-            </span>
+        <p class="tax chip-row">
+          <span class="tax-label">Tags:</span>
+          {post.data.tags.map((name) => (
+            <a class="chip" href={`/tags/${slugify(name)}/`}>{name}</a>
           ))}
         </p>
       )}
