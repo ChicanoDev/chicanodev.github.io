@@ -9,14 +9,29 @@ Terminal videos made with [VHS](https://github.com/charmbracelet/vhs), rendered 
 | `linux-fs` | 4 | Linux directory structure |
 | `linux-cmds` | 9 | Basic Linux commands |
 | `where-code-runs` | 3 | Bare metal, VMs, containers, the cloud |
+| `git-basics` | 1 | Your first commit |
 
 Each episode lives in `series/<series>/<NN-slug>/`:
 
 - `body.tape`: the commands. `# @beat M:SS Label` markers line up with the voiceover.
 - `voiceover.md`: the narration script, one `## [M:SS-M:SS]` section per beat, plus post copy.
 - `assets/` (optional): ASCII diagrams the tape `cat`s.
+- `narration/`, `transcript/`, `alignment.yaml`: your recordings, editable word fixes and take choices (see the workflow guide).
 
-`tapes/`, `shorts/` and `scripts/render-all.sh` are the older one-off tapes and are not part of this pipeline.
+## Layout
+
+| Path | Purpose |
+| --- | --- |
+| `series/` | the episodes |
+| `templates/episode/` | start a new episode here (copy, edit, register in `EPISODES`) |
+| `ideas/` | parked drafts that are not episodes yet |
+| `common/` | VHS look per orientation |
+| `assets/branding/` | the 5 s ChicanoDev animation used for the outro/intro |
+| `tools/`, `tests/` | `vidkit.py` and its modules; the test suite |
+| `docker/` | the `chicanodev-vhs` render image (VHS, Plex Mono, git) |
+| `docs/` | the production guide and the pre-pipeline baseline |
+| `audio/` | legacy single full-episode recordings for `mux` (gitignored) |
+| `out/`, `build/` | generated, gitignored |
 
 ## Workflow
 

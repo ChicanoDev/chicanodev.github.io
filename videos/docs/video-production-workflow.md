@@ -12,6 +12,8 @@ script  ->  record segments  ->  check-audio  ->  build  ->  review on phone  ->
 
 Each episode already has `series/<series>/<episode>/voiceover.md` (script, `## [0:00-0:05] Title` per section, and a `## Post copy` block) and `body.tape` (the terminal, with one `# @beat` per section). **Each timed heading is one segment.** The `[0:05-0:17]` times are only a rough guide now; your recording decides the real timing.
 
+Starting a new episode? Copy `templates/episode/` to `series/<series>/<NN-slug>/`, fill in both files, add the episode to `EPISODES` in `tools/vidkit.py`, and run `python3 tools/vidkit.py lint <series>/<NN-slug>`. The template lists the rules the linter enforces.
+
 ## 2. See what to record
 
 ```sh
