@@ -289,6 +289,7 @@ EPISODES = [
     ("where-code-runs", "01-bare-metal-vs-vm"),
     ("where-code-runs", "02-containers"),
     ("where-code-runs", "03-the-cloud"),
+    ("git-basics", "01-first-commit"),
 ]
 
 

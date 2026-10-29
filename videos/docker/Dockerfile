@@ -23,6 +23,11 @@ RUN curl -fsSL -o /tmp/plex-mono.zip \
  && fc-cache -f \
  && fc-list | grep -q "IBM Plex Mono"
 
+# The Git Basics series runs real git commands. Own layer so earlier layers stay cached.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+
 # Demo user for the permissions/sudo episodes; tapes run as this user.
 RUN useradd -m -s /bin/bash dave \
  && echo 'dave ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/dave
