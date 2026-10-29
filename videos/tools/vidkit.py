@@ -287,10 +287,11 @@ def episode_dir(series, slug):
 
 def _cmd_lint(argv):
     wanted = set(argv)
+    selected = set(_select(argv))
     failed = False
     for series, slug in EPISODES:
         name = f"{series}/{slug}"
-        if wanted and name not in wanted and slug not in wanted:
+        if (series, slug) not in selected:
             continue
         folder = episode_dir(series, slug)
         if not (folder / "body.tape").exists() or not (folder / "voiceover.md").exists():
@@ -329,7 +330,8 @@ def episode_id(series, slug):
 
 def _select(argv):
     wanted = set(argv)
-    return [(s, n) for s, n in EPISODES if not wanted or f"{s}/{n}" in wanted or n in wanted or s in wanted]
+    return [(s, n) for s, n in EPISODES
+            if not wanted or f"{s}/{n}" in wanted or n in wanted or s in wanted or episode_id(s, n) in wanted]
 
 
 def _docker(*args, entrypoint=None):
@@ -459,7 +461,9 @@ def _srt_seconds(stamp):
 
 
 def _cmd_compile(argv):
-    wanted = set(argv)
+    voiced = "--final" in argv
+    wanted = {a for a in argv if not a.startswith("--")}
+    folder = "final/horizontal" if voiced else "horizontal"
     for series in dict.fromkeys(s for s, _ in EPISODES):
         if wanted and series not in wanted:
             continue
@@ -467,24 +471,25 @@ def _cmd_compile(argv):
         sets, concat = [], []
         for index, (s, n) in enumerate(episodes, 1):
             eid = episode_id(s, n)
-            clip = ROOT / "out" / "horizontal" / f"{eid}.mp4"
+            clip = ROOT / "out" / folder / f"{eid}.mp4"
             if not clip.exists():
-                print(f"{series}: {clip.name} missing, render + burn first")
+                print(f"{series}: {clip.name} missing in out/{folder}. " + ("Record and mux every part first." if voiced else "Render and burn first."))
                 return 1
             title = parse_title((episode_dir(s, n) / "voiceover.md").read_text())
             (ROOT / "build" / series).mkdir(parents=True, exist_ok=True)
             card = _title_card(series, index, title)
-            concat += [f"file '/vhs/{card}'", f"file '/vhs/out/horizontal/{clip.name}'"]
-            sets.append((_parse_srt_cues((ROOT / "out" / "horizontal" / f"{eid}.srt").read_text()), _probe(clip)[2]))
+            concat += [f"file '/vhs/{card}'", f"file '/vhs/out/{folder}/{clip.name}'"]
+            sets.append((_parse_srt_cues((ROOT / "out" / folder / f"{eid}.srt").read_text()), _probe(clip)[2]))
         listing = ROOT / "build" / series / "concat.txt"
         listing.write_text("\n".join(concat) + "\n")
         (ROOT / "out" / "youtube").mkdir(parents=True, exist_ok=True)
         _docker("-y", "-f", "concat", "-safe", "0", "-i", f"build/{series}/concat.txt",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", f"out/youtube/{series}-full.mp4",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", f"out/youtube/{series}-full{'-voiced' if voiced else ''}.mp4",
                 entrypoint="ffmpeg")
         merged = offset_cues(merge_cue_sets(sets, gap=CARD_SECONDS), CARD_SECONDS)
-        (ROOT / "out" / "youtube" / f"{series}-full.srt").write_text(format_srt(merged))
-        print(f"out/youtube/{series}-full.mp4  ({len(episodes)} parts)")
+        suffix = "-voiced" if voiced else ""
+        (ROOT / "out" / "youtube" / f"{series}-full{suffix}.srt").write_text(format_srt(merged))
+        print(f"out/youtube/{series}-full{suffix}.mp4  ({len(episodes)} parts)")
     return 0
 
 
@@ -528,7 +533,7 @@ def _cmd_mux(argv):
         for orient in ORIENTATIONS:
             raw = ROOT / "build" / eid / f"{orient}-raw.mp4"
             if not raw.exists():
-                print(f"{eid}: {raw.name} missing. Run: python3 tools/vidkit.py render {eid}")
+                print(f"{eid}: {raw.name} missing. Run: python3 tools/vidkit.py render {series}/{slug}")
                 return 1
             video = _probe(raw)[2]
             final, hold = plan_mux(video, voice)
@@ -560,6 +565,10 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv[0] not in COMMANDS:
         print(f"usage: vidkit.py {{{'|'.join(COMMANDS)}}} [episode ...]")
+        return 2
+    names = [a for a in argv[1:] if not a.startswith("--")]
+    if names and not _select(names):
+        print(f"unknown episode or series: {' '.join(names)}. Try one like linux-fs/01-no-c-drive or linux-fs.")
         return 2
     return COMMANDS[argv[0]](argv[1:])
 

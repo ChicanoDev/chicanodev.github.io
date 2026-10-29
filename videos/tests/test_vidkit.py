@@ -355,3 +355,29 @@ class TestNarrationText:
         assert "[0:00-0:05] Hook" in text
         assert "On screen" not in text
         assert "Caption for socials" not in text
+
+
+class TestSelectEpisodes:
+    def test_accepts_the_full_episode_id(self):
+        assert vidkit._select(["linux-fs-01-no-c-drive"]) == [("linux-fs", "01-no-c-drive")]
+
+    def test_accepts_series_slash_folder(self):
+        assert vidkit._select(["linux-fs/01-no-c-drive"]) == [("linux-fs", "01-no-c-drive")]
+
+    def test_accepts_a_whole_series(self):
+        assert len(vidkit._select(["where-code-runs"])) == 3
+
+    def test_no_arguments_selects_everything(self):
+        assert len(vidkit._select([])) == len(vidkit.EPISODES)
+
+    def test_unknown_name_selects_nothing(self):
+        assert vidkit._select(["nope"]) == []
+
+
+class TestMainRejectsUnknownEpisodes:
+    def test_unknown_episode_is_an_error_not_a_silent_no_op(self, capsys):
+        assert vidkit.main(["pace", "no-such-episode"]) == 2
+        assert "no-such-episode" in capsys.readouterr().out
+
+    def test_flags_are_not_treated_as_episode_names(self, capsys):
+        assert vidkit.main(["pace", "linux-fs/01-no-c-drive"]) == 0
