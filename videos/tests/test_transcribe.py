@@ -148,3 +148,11 @@ class TestVtt:
         vtt = captions.format_vtt(cues)
         assert vtt.startswith("WEBVTT\n")
         assert "00:00:00.000 --> 00:00:00.700" in vtt
+
+
+class TestRealEngineTypes:
+    def test_numpy_floats_from_whisper_can_be_saved(self, tmp_path):
+        np = pytest.importorskip("numpy")
+        ws = [Word(np.float64(0.0), np.float64(0.26), "Linux", np.float64(0.88))]
+        transcribe.save(tmp_path, transcribe.Transcript("01-hook", "sha", ws))
+        assert transcribe.load(tmp_path, "01-hook").words[0].end == 0.26

@@ -53,7 +53,7 @@ def save(folder, transcript, stale=False):
     data = {
         "segment": transcript.segment,
         "audio_sha": transcript.audio_sha,
-        "words": [{"text": w.text, "start": w.start, "end": w.end, "conf": round(w.conf, 3), "asr": w.asr or w.text}
+        "words": [{"text": w.text, "start": float(w.start), "end": float(w.end), "conf": round(float(w.conf), 3), "asr": w.asr or w.text}
                   for w in transcript.words],
     }
     path.write_text("# Edit a word's `text` to correct it. Edits are kept until the recording changes.\n"
@@ -123,7 +123,7 @@ def whisper_engine(model="small.en", device="cpu", compute_type="int8"):
     def run(wav):
         segments, _ = loaded.transcribe(str(wav), word_timestamps=True, language="en", vad_filter=False,
                                         beam_size=5, condition_on_previous_text=False)
-        return [Word(round(w.start, 3), round(w.end, 3), w.word.strip(), float(w.probability))
+        return [Word(round(float(w.start), 3), round(float(w.end), 3), w.word.strip(), float(w.probability))
                 for s in segments for w in s.words if w.word.strip()]
 
     return run
