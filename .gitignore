@@ -1,21 +1,12 @@
-# hidden files
+node_modules/
+dist/
+test-results/
+playwright-report/
+blob-report/
+
+# Editor and OS noise, but keep project dotfiles Git should track.
 .*
 !.git*
 !.editorconfig
+!.node-version
 !.nojekyll
-!.travis.yml
-!.husky
-!.commitlintrc.json
-!.versionrc.json
-!.stylelintrc.json
-
-# bundler cache
-_site
-vendor
-
-# rubygem
-*.gem
-
-# npm dependencies
-node_modules
-package-lock.json

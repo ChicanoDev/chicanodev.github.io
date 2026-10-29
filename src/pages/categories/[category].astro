@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPosts, groupBy } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const topics = groupBy(await getPosts(), 'categories');
+  return topics.map((topic) => ({ params: { category: topic.slug } }));
+}
+
+const { category } = Astro.params;
+const topic = groupBy(await getPosts(), 'categories').find((item) => item.slug === category);
+if (!topic) {
+  throw new Error(`Missing category ${category}`);
+}
+const label = topic.posts.length === 1 ? 'article' : 'articles';
+---
+
+<Base title={topic.name} description={`ChicanoDev articles filed under ${topic.name}.`}>
+  <h1>{topic.name}</h1>
+  <p class="lede">{topic.posts.length} {label} filed under this topic.</p>
+  <div class="card-list block-gap">
+    {topic.posts.map((post) => <PostCard post={post} />)}
+  </div>
+  <p class="more"><a href="/categories/">All topics</a></p>
+</Base>

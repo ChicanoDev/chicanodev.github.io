@@ -1,0 +1,15 @@
+Website source in this repository is under the MIT license, copyright Dave Vigil.
+See LICENSE.
+
+The fonts are not covered by that MIT license:
+
+- Atkinson Hyperlegible, copyright 2020 Braille Institute of America, Inc.
+- IBM Plex Mono, copyright 2017 IBM Corp.
+
+Both are used under the SIL Open Font License, Version 1.1. The license texts
+ship with the site at /licenses/atkinson-hyperlegible.txt and
+/licenses/ibm-plex-mono.txt.
+
+This repository previously contained the Chirpy Jekyll starter, MIT license,
+copyright 2021 Cotes Chung. That starter source has been removed. No Chirpy
+theme code or Chirpy assets remain.

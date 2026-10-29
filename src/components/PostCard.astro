@@ -1,0 +1,24 @@
+---
+import type { Post } from '../lib/posts';
+import { formatDate } from '../lib/posts';
+
+interface Props {
+  post: Post;
+  level?: 2 | 3;
+}
+
+const { post, level = 2 } = Astro.props;
+const href = `/posts/${post.id}/`;
+---
+
+<article class="card">
+  {level === 3 ? (
+    <h3><a href={href}>{post.data.title}</a></h3>
+  ) : (
+    <h2><a href={href}>{post.data.title}</a></h2>
+  )}
+  <p class="meta">
+    <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+  </p>
+  <p>{post.data.description}</p>
+</article>

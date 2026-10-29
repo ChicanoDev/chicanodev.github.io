@@ -1,0 +1,25 @@
+---
+import { site, socialLinks } from '../data/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="tagline">{site.tagline}</p>
+    <ul class="footer-links">
+      {socialLinks.map((link) => (
+        <li><a href={link.href}>{link.label}</a></li>
+      ))}
+      <li><a href="/rss.xml">RSS</a></li>
+      <li><a href="/archives/">Archive</a></li>
+    </ul>
+    <p class="fineprint">© {year} {site.author}</p>
+    <p class="fineprint">
+      <a href="/licenses/atkinson-hyperlegible.txt">Atkinson Hyperlegible</a>
+      {' '}and{' '}
+      <a href="/licenses/ibm-plex-mono.txt">IBM Plex Mono</a>
+      {' '}are used under the SIL Open Font License.
+    </p>
+  </div>
+</footer>

@@ -1,46 +1,89 @@
-# Chirpy Starter [![Gem Version](https://img.shields.io/gem/v/jekyll-theme-chirpy)](https://rubygems.org/gems/jekyll-theme-chirpy) [![GitHub license](https://img.shields.io/github/license/cotes2020/chirpy-starter.svg?color=blue)][mit]
+# ChicanoDev
 
-When installing the [**Chirpy**][chirpy] theme through [RubyGems.org][gem], Jekyll can only read files in the folders `_includes`, `_layout`, `_sass` and `assets`, as well as a small part of options of the `_config.yml` file from the theme's gem. If you have ever installed this theme gem, you can use the command `bundle info --path jekyll-theme-chirpy` to locate these files.
+**Built on experience. Shared with everyone.**
 
-The Jekyll organization claims that this is to leave the ball in the user’s court, but this also results in users not being able to enjoy the out-of-the-box experience when using feature-rich themes.
+Practical Linux, DevOps, programming, and AI automation tutorials. The site is published at [chicanodev.github.io](https://chicanodev.github.io/).
 
-To fully use all the features of **Chirpy**, you need to copy the other critical files from the theme's gem to your Jekyll site. The following is a list of targets:
+## Requirements
 
-```shell
-.
-├── _config.yml
-├── _data
-├── _plugins
-├── _tabs
-└── index.html
+Node.js 24. The exact version is in `.node-version`.
+
+```sh
+nvm use 24
+npm install
 ```
 
-In order to save your time, and to prevent you from missing some files when copying, we extract those files/configurations of the latest version of the **Chirpy** theme and the [CD][CD] workflow to here, so that you can start writing in minutes.
+`package.json` allows `>=24 <25`.
 
-## Prerequisites
+## Commands
 
-Follow the instructions in the [Jekyll Docs](https://jekyllrb.com/docs/installation/) to complete the installation of `Ruby`, `RubyGems`, `Jekyll` and `Bundler`.
-
-## Installation
-
-[**Use this template**][use-template] to generate a brand new repository and name it `<GH_USERNAME>.github.io`, where `GH_USERNAME` represents your GitHub username.
-
-Then clone it to your local machine and run:
-
-```
-$ bundle
+```sh
+npm run dev       # local site at http://localhost:4321
+npm run build     # static site in dist/
+npm run preview   # serve dist/
+npm run check     # Astro and TypeScript
+npm test          # check, production build, link and content checks, browser tests
 ```
 
-## Usage
+Browser tests use Playwright with Chromium. The first run needs:
 
-Please see the [theme's docs](https://github.com/cotes2020/jekyll-theme-chirpy#documentation).
+```sh
+npx playwright install chromium
+```
 
-## License
+## New article
 
-This work is published under [MIT][mit] License.
+Add `src/content/posts/your-slug.md`. The filename is the URL slug. This file is served at `/posts/your-slug/`.
 
-[gem]: https://rubygems.org/gems/jekyll-theme-chirpy
-[chirpy]: https://github.com/cotes2020/jekyll-theme-chirpy/
-[use-template]: https://github.com/cotes2020/chirpy-starter/generate
-[CD]: https://en.wikipedia.org/wiki/Continuous_deployment
-[mit]: https://github.com/cotes2020/chirpy-starter/blob/master/LICENSE
+```md
+---
+title: "Post title"
+date: 2026-11-01 09:00:00 -0500
+description: "One or two sentences."
+categories: [linux]
+tags: [shell]
+---
+
+## First section
+
+Write the article here. Do not add an H1. The title field is the page heading.
+```
+
+`updatedDate` and `draft: true` are optional. Drafts are omitted from production builds, including pages, RSS, and the sitemap. `src/content/posts/draft-preview.md` is a fixture used by the production checks to prove that filtering.
+
+For a YouTube embed or a local terminal recording, use MDX (`your-slug.mdx`) and the same front matter:
+
+```mdx
+import YouTube from '../../components/YouTube.astro';
+import TerminalRecording from '../../components/TerminalRecording.astro';
+
+## Demo
+
+<YouTube id="videoId" title="What the recording shows" />
+
+<TerminalRecording src="/recordings/demo.mp4" title="Installing the tool" />
+```
+
+Put local videos in `public/recordings/`. `src` must be a site path such as `/recordings/demo.mp4`. YouTube uses the privacy-enhanced embed and does not add a player script of our own.
+
+## Theme
+
+Dark is the signature theme. The first visit follows the system preference. The header control saves an explicit choice in `localStorage` under `chicanodev-theme`.
+
+## Analytics
+
+Production builds load Google Analytics `G-VK281QV7N1`, the measurement ID already set on the Jekyll site. No other tracker is included. Set `analyticsId` to `''` in `src/data/site.ts` to turn it off. Local `dev` does not load it. `preview` serves the production build, so it does.
+
+## GitHub Pages
+
+The site is a static export for `https://chicanodev.github.io` with `base: '/'`.
+
+`.github/workflows/deploy.yml` runs the full check and test suite on the commit being published, then uploads `dist` and deploys. That job runs only for pushes to `main` and for manual runs on `main`. Pull requests and other branches run the same tests and do not deploy. A green check on a different workflow is not what gates the deploy. The publish job runs the tests itself.
+
+Repository setting that must stay as it is: **Settings → Pages → Build and deployment → Source: GitHub Actions**. This migration does not change repository settings. Do not switch Pages back to branch deploys.
+
+`public/.nojekyll` is copied into the build so GitHub Pages will not run Jekyll on the artifact.
+
+## Fonts
+
+Atkinson Hyperlegible and IBM Plex Mono are vendored at build time and used under the SIL Open Font License. See `NOTICE`.

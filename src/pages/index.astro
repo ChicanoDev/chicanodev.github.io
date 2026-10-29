@@ -1,0 +1,72 @@
+---
+import Base from '../layouts/Base.astro';
+import PostCard from '../components/PostCard.astro';
+import { site } from '../data/site';
+import { getPosts, groupBy } from '../lib/posts';
+
+const posts = await getPosts();
+const latest = posts.slice(0, 4);
+const topics = groupBy(posts, 'categories');
+---
+
+<Base title={site.title} description={site.description}>
+  <section class="hero">
+    <div class="signal" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <h1>Engineering knowledge belongs to everyone.</h1>
+    <p class="lede">
+      Practical Linux, DevOps, programming, and AI automation tutorials. Built on experience. Shared with everyone.
+    </p>
+    <p class="hero-actions">
+      {posts[0] && <a href={`/posts/${posts[0].id}/`}>Read the latest article</a>}
+      <a href="/about/">About ChicanoDev</a>
+    </p>
+  </section>
+
+  <section class="section" aria-labelledby="latest">
+    <p class="prompt">$ ls ~/knowledge</p>
+    <h2 id="latest">Latest articles</h2>
+    {latest.length > 0 ? (
+      <div class="card-list">
+        {latest.map((post) => <PostCard post={post} level={3} />)}
+      </div>
+    ) : (
+      <p class="empty">No articles yet.</p>
+    )}
+    {posts.length > 0 && <p class="more"><a href="/posts/">All articles</a></p>}
+  </section>
+
+  <section class="section" aria-labelledby="topics">
+    <h2 id="topics">Topics</h2>
+    {topics.length > 0 ? (
+      <ul class="topic-list">
+        {topics.map((topic) => (
+          <li>
+            <a href={`/categories/${topic.slug}/`}>{topic.name}</a>
+            {' '}
+            <span class="meta">{topic.posts.length} {topic.posts.length === 1 ? 'article' : 'articles'}</span>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="empty">Topics show up here when an article is published.</p>
+    )}
+  </section>
+
+  <section class="section narrow" aria-labelledby="mission">
+    <h2 id="mission">Why ChicanoDev</h2>
+    <p>
+      ChicanoDev shares practical engineering knowledge, especially with Chicanos, Latinx people, LGBTQIA+ folks, and others who have been underrepresented in technology. Everyone who wants to learn is welcome.
+    </p>
+    <p>Knowledge should be shared, not hoarded.</p>
+    <p class="more"><a href="/about/">About ChicanoDev</a></p>
+  </section>
+
+  <section class="section narrow" aria-labelledby="videos">
+    <h2 id="videos">Video tutorials</h2>
+    <p>
+      No recordings yet. Written tutorials are here now. Short videos and terminal sessions will be added when they are ready.
+    </p>
+  </section>
+</Base>

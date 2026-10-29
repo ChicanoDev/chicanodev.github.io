@@ -1,0 +1,20 @@
+---
+interface Props {
+  src: string;
+  title: string;
+}
+
+const { src, title } = Astro.props;
+
+if (!src.startsWith('/') || src.startsWith('//')) {
+  throw new Error('Terminal recordings must use a local site path, such as /recordings/demo.mp4.');
+}
+---
+
+<figure class="recording">
+  <video controls preload="metadata" aria-label={title}>
+    <source src={src} />
+    <a href={src}>Download {title}</a>
+  </video>
+  <figcaption>{title}</figcaption>
+</figure>
