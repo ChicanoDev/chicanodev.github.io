@@ -473,34 +473,55 @@ def _srt_seconds(stamp):
 
 def _cmd_compile(argv):
     voiced = "--final" in argv
-    wanted = {a for a in argv if not a.startswith("--")}
+    wanted = set(_names(argv))
     folder = "final/horizontal" if voiced else "horizontal"
     for series in dict.fromkeys(s for s, _ in EPISODES):
         if wanted and series not in wanted:
             continue
         episodes = [(s, n) for s, n in EPISODES if s == series]
-        sets, concat = [], []
+        sets, concat, hooks = [], [], []
         for index, (s, n) in enumerate(episodes, 1):
             eid = episode_id(s, n)
-            clip = ROOT / "out" / folder / f"{eid}.mp4"
+            clip, srt = ROOT / "out" / folder / f"{eid}.mp4", ROOT / "out" / folder / f"{eid}.srt"
+            clean = None
+            if voiced:
+                import pipeline
+                clean = pipeline.clean_source(ROOT, eid)  # new-pipeline episode: use its brand-free master
+                if clean:
+                    clip, srt = clean.clip, clean.srt
+            hooks.append(clean.hook_end if clean else None)
             if not clip.exists():
                 print(f"{series}: {clip.name} missing in out/{folder}. " + ("Record and mux every part first." if voiced else "Render and burn first."))
                 return 1
             title = parse_title((episode_dir(s, n) / "voiceover.md").read_text())
             (ROOT / "build" / series).mkdir(parents=True, exist_ok=True)
             card = _title_card(series, index, title)
-            concat += [f"file '/vhs/{card}'", f"file '/vhs/out/{folder}/{clip.name}'"]
-            sets.append((_parse_srt_cues((ROOT / "out" / folder / f"{eid}.srt").read_text()), _probe(clip)[2]))
+            concat += [f"file '/vhs/{card}'", f"file '/vhs/{clip.relative_to(ROOT)}'"]
+            sets.append((_parse_srt_cues(srt.read_text()), _probe(clip)[2]))
         listing = ROOT / "build" / series / "concat.txt"
         listing.write_text("\n".join(concat) + "\n")
         (ROOT / "out" / "youtube").mkdir(parents=True, exist_ok=True)
+        suffix = "-voiced" if voiced else ""
+        target = ROOT / "out" / "youtube" / f"{series}-full{suffix}.mp4"
+        # The brand clip goes in ONCE per compilation, and only for episodes made by the narration pipeline
+        # (or when asked for explicitly), so existing legacy compilations are unchanged.
+        placement = _flag(argv, "--brand-placement", "after-hook" if any(hooks) else "none") if voiced else "none"
+        concat_out = ROOT / "build" / series / "compiled.mp4" if placement != "none" else target
         _docker("-y", "-f", "concat", "-safe", "0", "-i", f"build/{series}/concat.txt",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", f"out/youtube/{series}-full{'-voiced' if voiced else ''}.mp4",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(concat_out.relative_to(ROOT)),
                 entrypoint="ffmpeg")
         merged = offset_cues(merge_cue_sets(sets, gap=CARD_SECONDS), CARD_SECONDS)
-        suffix = "-voiced" if voiced else ""
+        if placement != "none":
+            import pipeline
+            hook_end = CARD_SECONDS + (hooks[0] or 6.0)
+            try:
+                _, merged = pipeline.brand_compilation(concat_out, merged, placement, hook_end,
+                                                       ROOT / pipeline.INTRO, ROOT / "build" / series, target)
+            except ValueError as err:
+                print(f"{series}: {err}")
+                return 1
         (ROOT / "out" / "youtube" / f"{series}-full{suffix}.srt").write_text(format_srt(merged))
-        print(f"out/youtube/{series}-full{suffix}.mp4  ({len(episodes)} parts)")
+        print(f"out/youtube/{series}-full{suffix}.mp4  ({len(episodes)} parts" + (f", brand clip once: {placement}" if placement != "none" else "") + ")")
     return 0
 
 

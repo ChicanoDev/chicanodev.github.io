@@ -110,3 +110,13 @@ def backlog(root):
         return []
     found = (current(root, p.name.removesuffix(".status.json")) for p in sorted(root.glob("*.status.json")))
     return [s for s in found if s and s.state == "approved"]
+
+
+def is_intact(root, eid, label):
+    """True if `eid` was built by the pipeline and its exported `label` file is still that exact file."""
+    status = _load(Path(root), eid)
+    if not status or label not in status.files:
+        return False
+    info = status.files[label]
+    path = Path(root) / info["path"]
+    return path.exists() and narration.file_sha(path) == info["sha"]

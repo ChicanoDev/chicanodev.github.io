@@ -175,6 +175,7 @@ def build_episode(series, slug, cfg, env):
         result.qa[orient] = compose.qa_problems(final, orient, result.expected[orient], len(slots), brand_seconds)
         content_parts += [orient, placement, narration.file_sha(final)]
 
+    _write(work / "timing.json", json.dumps({"hook_end": hook_end, "narration_end": spans[-1][1], "expected_total": expected_total}))
     _write(final_root / f"{eid}.meta.md", _metadata(eid, voiceover, segments, transcripts))
     qa_flat = [f"{o}: {p}" for o, ps in result.qa.items() for p in ps]
     result.status = approval.record_build(final_root, eid, narration.cache_key(*content_parts), result.outputs, qa_flat)
@@ -288,3 +289,34 @@ def docker_env(root=None, log=print):
                        "-c:a", "copy", "-movflags", "+faststart", rel(dst), entrypoint="ffmpeg")
 
     return Env(root=root, render=render, burn=burn, engine=None, log=log)
+
+
+@dataclass(frozen=True)
+class CleanSource:
+    clip: Path
+    srt: Path
+    hook_end: float
+
+
+def clean_source(root, eid):
+    """Brand-free captioned master of a pipeline-built episode, for compilations. None for legacy episodes
+    (never built here, or whose exported file was since replaced by `mux`)."""
+    root = Path(root)
+    work = root / "out" / "intermediate" / eid
+    clip, srt, timing = work / "horizontal-captioned.mp4", work / "horizontal-captions.srt", work / "timing.json"
+    if not (clip.exists() and srt.exists() and timing.exists()):
+        return None
+    if not approval.is_intact(root / "out" / "final", eid, "horizontal"):
+        return None
+    return CleanSource(clip, srt, json.loads(timing.read_text())["hook_end"])
+
+
+def brand_compilation(compiled, cues, placement, hook_end, intro, work_dir, out_path):
+    """Add the brand clip ONCE to a whole compiled video. Returns (path, cues_for_the_new_timeline)."""
+    if placement == "both":
+        raise ValueError("a compilation gets the brand clip once: use after-hook, outro or none, not both")
+    compose.check_placement(placement)
+    Path(work_dir).mkdir(parents=True, exist_ok=True)
+    brand = compose.brand_clip(intro, Path(work_dir) / "brand-compilation.mp4", "horizontal")
+    compose.assemble(compiled, brand, out_path, placement, hook_end)
+    return Path(out_path), compose.shift_cues(cues, placement, hook_end, compose.seconds(brand) if compose.brand_slots(placement) else 0)

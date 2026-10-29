@@ -35,12 +35,33 @@ Every command takes optional episode names (`linux-fs`, `01-no-c-drive`, or `lin
 
 ## Voiceover
 
-Record against the finished video and use `voiceover.md` as the script. The `.srt` files come from that script, so re-time them if your read differs much.
+**Preferred: narration-first.** Record 2–3 sentences per section, build, review, approve. The video is timed to your voice and the captions come from what you actually said. See [docs/video-production-workflow.md](docs/video-production-workflow.md).
+
+```sh
+python3 tools/vidkit.py segments linux-fs/01-no-c-drive      # what to record, and the filenames
+python3 tools/vidkit.py build linux-fs/01-no-c-drive         # transcribe, sync, caption, brand
+python3 tools/vidkit.py approve linux-fs/01-no-c-drive       # after watching it on your phone
+```
+
+**Legacy:** record one take against the finished silent video and run `mux`. The `.srt` files then come from the script, so re-time them if your read differs much. Both flows keep working.
+
+## Setup for the narration pipeline
+
+Python 3.12 (3.13+ has no wheels for faster-whisper's dependencies):
+
+```sh
+uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python tools/vidkit.py segments linux-fs/01-no-c-drive
+```
+
+The first `transcribe` downloads the `small.en` whisper model (about 500 MB, once). Everything runs locally.
 
 ## Tests
 
 ```sh
-uv run --with pytest pytest tests
+.venv/bin/python -m pytest tests
 ```
+
+The integration tests (`test_pipeline_integration.py`, `test_cli_build.py`) run the whole pipeline on synthetic media and take a few minutes. They need `ffmpeg`/`ffprobe` on the host but not Docker or the whisper model.
 
 Unit tests cover `tools/vidkit.py`. `tests/test_episodes.py` checks every episode against the linter and the setup rules, for example that a tape moves out of the mounted repo directory before it creates files.
