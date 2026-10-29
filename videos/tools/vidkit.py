@@ -690,11 +690,209 @@ def _cmd_transcript(argv):
     return 0 if complete else 1
 
 
+VALUE_FLAGS = ("--format", "--brand-placement", "--by")
+FORMATS = {"vertical": ["vertical"], "horizontal": ["horizontal"], "both": ["vertical", "horizontal"]}
+
+
+def _flag(argv, name, default=None):
+    return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else default
+
+
+def _names(argv):
+    """Episode/series names: everything that is not a flag or a flag's value."""
+    skip = {argv.index(f) + 1 for f in VALUE_FLAGS if f in argv}
+    return [a for i, a in enumerate(argv) if not a.startswith("-") and i not in skip]
+
+
+def _who(argv):
+    if _flag(argv, "--by"):
+        return _flag(argv, "--by")
+    git = subprocess.run(["git", "config", "user.name"], capture_output=True, text=True).stdout.strip()
+    return git or __import__("getpass").getuser()
+
+
+def _build_one(series, slug, argv, env):
+    """Build one episode and print the result. Returns (ok, message_if_not)."""
+    import approval
+    import compose
+    import media_errors
+    import pipeline
+    eid = episode_id(series, slug)
+    final_root = env.root / "out" / "final"
+    fmt = _flag(argv, "--format", "both")
+    if fmt not in FORMATS:
+        return False, f"unknown --format {fmt}. Use vertical, horizontal or both."
+    cfg = pipeline.Config(formats=FORMATS[fmt], placement=_flag(argv, "--brand-placement"), force="--force" in argv,
+                          dry_run="--dry-run" in argv, verbose=bool({"-v", "--verbose"} & set(argv)))
+    before = approval.current(final_root, eid)
+    try:
+        if cfg.placement:
+            compose.check_placement(cfg.placement)
+        result = pipeline.build_episode(series, slug, cfg, env)
+    except media_errors.EXPECTED as err:
+        return False, str(err)
+    if cfg.dry_run:
+        print(f"=== {series}/{slug} (dry run, nothing written)")
+        for line in result.plan_lines:
+            print(f"   {line}")
+        return True, ""
+    ran = sorted(k for k, v in result.stage_status.items() if v == "ran")
+    print(f"=== {series}/{slug}: " + (f"ran {', '.join(ran)}" if ran else "everything cached, nothing to redo"))
+    ok = True
+    for orient, path in result.outputs.items():
+        problems = result.qa[orient]
+        print(f"{'OK' if not problems else '!!'} {orient:10} {path.relative_to(env.root)}  "
+              f"({result.placements[orient]} brand)")
+        for problem in problems:
+            print(f"     {problem}")
+        ok = ok and not problems
+    state = result.status.state
+    if before and before.state == "approved" and state != "approved":
+        print("   Approval voided: the content changed. Review again, then approve.")
+    if state == "approved":
+        print("   Unchanged since you approved it.")
+    elif ok:
+        print(f"   NOT approved yet. Watch it on your phone, then: python3 tools/vidkit.py approve {series}/{slug}")
+    return ok, ""
+
+
+def _cmd_build(argv):
+    import pipeline
+    if not _names(argv):
+        print("build needs an episode, e.g. python3 tools/vidkit.py build linux-fs/01-no-c-drive --format vertical\n"
+              "(use batch-build for a whole series)")
+        return 2
+    env = pipeline.docker_env(log=print)
+    failed = False
+    for series, slug in _select(_names(argv)):
+        ok, message = _build_one(series, slug, argv, env)
+        if message:
+            print(f"!! {series}/{slug}: {message}")
+        failed = failed or not ok
+    return 1 if failed else 0
+
+
+def _cmd_batch_build(argv):
+    """Build every complete episode of a series; skip unrecorded ones and anything already approved."""
+    import approval
+    import media_errors
+    import narration
+    import pipeline
+    env = pipeline.docker_env(log=lambda m: None)
+    built, skipped, failed = [], [], []
+    for series, slug in _select(_names(argv)):
+        eid = episode_id(series, slug)
+        folder = episode_dir(series, slug)
+        current = approval.current(env.root / "out" / "final", eid)
+        if current and current.state == "approved" and "--force" not in argv:
+            skipped.append(f"{eid} (approved, use --force to rebuild)")
+            continue
+        selected = narration.load_alignment(folder).get("selected") or {}
+        missing = [s.id for s in narration.episode_segments(folder)
+                   if _safe_take(narration, folder, s.id, selected) is None]
+        if missing:
+            skipped.append(f"{eid} (not fully recorded: missing {', '.join(missing)})")
+            continue
+        try:
+            ok, message = _build_one(series, slug, argv, env)
+        except media_errors.EXPECTED as err:
+            ok, message = False, str(err)
+        (built if ok else failed).append(eid if ok else f"{eid}: {message or 'failed checks'}")
+    print("\nbatch summary")
+    print(f"  built: {', '.join(built) or '-'}")
+    for line in skipped:
+        print(f"  skipped: {line}")
+    for line in failed:
+        print(f"  FAILED: {line}")
+    return 1 if failed else 0
+
+
+def _safe_take(narration, folder, seg_id, selected):
+    try:
+        return narration.resolve_take(folder / "narration", seg_id, selected)
+    except narration.AmbiguousTake:
+        return folder  # present but ambiguous: let the build report it
+
+
+REVIEW_CHECKLIST = """Review checklist (watch the files below on your phone, with sound):
+  [ ] Your voice is clear: no clipped words, steady volume
+  [ ] Captions say what you said (fix words in transcript/<segment>.yaml, then rebuild)
+  [ ] Each command is on screen about when you say it
+  [ ] Text is readable at phone size; captions do not cover terminal output
+  [ ] Narration finishes before the ChicanoDev outro/intro starts
+"""
+
+
+def _cmd_review(argv):
+    import approval
+    import compose
+    import pipeline
+    env = pipeline.docker_env()
+    final_root = env.root / "out" / "final"
+    missing = False
+    for series, slug in _select(_names(argv)):
+        eid = episode_id(series, slug)
+        status = approval.current(final_root, eid)
+        if status is None:
+            print(f"{eid}: nothing built yet. Run: python3 tools/vidkit.py build {series}/{slug}")
+            missing = True
+            continue
+        print(f"=== {series}/{slug}: {status.state}" + (f" by {status.approved_by} at {status.approved_at}" if status.approved_by else ""))
+        for label, info in status.files.items():
+            path = final_root / info["path"]
+            length = f"{compose.seconds(path):.1f}s" if path.exists() else "MISSING"
+            print(f"   {label:10} {path.relative_to(env.root)}  {length}")
+            if "--open" in argv and path.exists():
+                subprocess.run(["open", str(path)])
+        for problem in status.qa_problems:
+            print(f"   !! {problem}")
+        print(f"   notes: {(final_root / f'{eid}.meta.md').relative_to(env.root)}")
+        _print_review(__import__("narration").episode_segments(episode_dir(series, slug)), episode_dir(series, slug))
+        print(REVIEW_CHECKLIST + f"When happy: python3 tools/vidkit.py approve {series}/{slug}")
+    return 1 if missing else 0
+
+
+def _cmd_approve(argv):
+    import approval
+    import pipeline
+    env = pipeline.docker_env()
+    failed = False
+    for series, slug in _select(_names(argv)):
+        eid = episode_id(series, slug)
+        try:
+            status = approval.approve(env.root / "out" / "final", eid, _who(argv))
+        except approval.NotApprovable as err:
+            print(f"!! {err}")
+            failed = True
+            continue
+        print(f"approved {eid} by {status.approved_by}. It is now in the publish backlog.")
+    return 1 if failed else 0
+
+
+def _cmd_backlog(argv):
+    import approval
+    import pipeline
+    env = pipeline.docker_env()
+    items = approval.backlog(env.root / "out" / "final")
+    if not items:
+        print("Nothing approved yet. Build, review, then approve an episode.")
+        return 0
+    print("Approved and ready to publish manually (YouTube Studio / Meta):")
+    for st in items:
+        print(f"  {st.eid}  approved {st.approved_at} by {st.approved_by}")
+        for label, info in st.files.items():
+            print(f"      {label}: out/final/{info['path']}")
+        print(f"      notes: out/final/{st.eid}.meta.md")
+    return 0
+
+
 COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn,
             "verify": _cmd_verify, "compile": _cmd_compile,
             "script": _cmd_script, "pace": _cmd_pace, "mux": _cmd_mux, "chapters": _cmd_chapters,
             "segments": _cmd_segments, "check-audio": _cmd_check_audio,
-            "transcribe": _cmd_transcribe, "transcript": _cmd_transcript}
+            "transcribe": _cmd_transcribe, "transcript": _cmd_transcript,
+            "build": _cmd_build, "batch-build": _cmd_batch_build, "review": _cmd_review,
+            "approve": _cmd_approve, "backlog": _cmd_backlog}
 
 
 def main(argv=None):
@@ -702,7 +900,7 @@ def main(argv=None):
     if not argv or argv[0] not in COMMANDS:
         print(f"usage: vidkit.py {{{'|'.join(COMMANDS)}}} [episode ...]")
         return 2
-    names = [a for a in argv[1:] if not a.startswith("--")]
+    names = _names(argv[1:])
     if names and not _select(names):
         print(f"unknown episode or series: {' '.join(names)}. Try one like linux-fs/01-no-c-drive or linux-fs.")
         return 2
