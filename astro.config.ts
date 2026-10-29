@@ -4,7 +4,7 @@ import { satteri } from '@astrojs/markdown-satteri';
 import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://chicanodev.github.io',
+  site: 'https://chicanodev.com',
   base: '/',
   trailingSlash: 'always',
   output: 'static',

@@ -2,7 +2,7 @@
 
 **Built on experience. Shared with everyone.**
 
-Practical Linux, DevOps, programming, and AI automation tutorials. The site is published at [chicanodev.github.io](https://chicanodev.github.io/).
+Practical Linux, DevOps, programming, and AI automation tutorials. The site is published at [chicanodev.com](https://chicanodev.com/).
 
 ## Requirements
 
@@ -76,11 +76,15 @@ Production builds load Google Analytics `G-VK281QV7N1`, the measurement ID alrea
 
 ## GitHub Pages
 
-The site is a static export for `https://chicanodev.github.io` with `base: '/'`.
+The site is a static export for `https://chicanodev.com` with `base: '/'`. Canonical URLs, Open Graph, RSS, and the sitemap use that origin. `public/CNAME` keeps the GitHub Pages custom domain set to `chicanodev.com`.
+
+GitHub Pages already redirects `https://chicanodev.github.io/...` to the custom domain while preserving the path (for example `/posts/welcome/`). After HTTPS finishes provisioning, turn on **Settings → Pages → Enforce HTTPS** so those redirects land on `https://chicanodev.com` instead of `http://`.
 
 `.github/workflows/deploy.yml` runs the full check and test suite on the commit being published, then uploads `dist` and deploys. That job runs only for pushes to `main` and for manual runs on `main`. Pull requests and other branches run the same tests and do not deploy. A green check on a different workflow is not what gates the deploy. The publish job runs the tests itself.
 
-Repository setting that must stay as it is: **Settings → Pages → Build and deployment → Source: GitHub Actions**. This migration does not change repository settings. Do not switch Pages back to branch deploys.
+Repository settings that must stay as they are:
+- **Settings → Pages → Build and deployment → Source: GitHub Actions**
+- **Custom domain:** `chicanodev.com`
 
 `public/.nojekyll` is copied into the build so GitHub Pages will not run Jekyll on the artifact.
 
