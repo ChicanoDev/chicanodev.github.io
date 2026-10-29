@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getPosts, groupBy } from '../../lib/posts';
+
+const topics = groupBy(await getPosts(), 'categories');
+---
+
+<Base title="Topics" description="Article topics on ChicanoDev.">
+  <h1>Topics</h1>
+  {topics.length > 0 ? (
+    <ul class="topic-list">
+      {topics.map((topic) => (
+        <li>
+          <a href={`/categories/${topic.slug}/`}>{topic.name}</a>
+          {' '}
+          <span class="meta">{topic.posts.length} {topic.posts.length === 1 ? 'article' : 'articles'}</span>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">No topics yet. They show up here when an article is published.</p>
+  )}
+  <p class="more"><a href="/tags/">Browse tags</a></p>
+</Base>

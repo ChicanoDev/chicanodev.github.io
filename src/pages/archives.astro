@@ -1,0 +1,22 @@
+---
+import Base from '../layouts/Base.astro';
+import { formatDate, getPosts } from '../lib/posts';
+
+const posts = await getPosts();
+---
+
+<Base title="Archive" description="Every ChicanoDev article, newest first.">
+  <h1>Archive</h1>
+  {posts.length > 0 ? (
+    <ul class="archive">
+      {posts.map((post) => (
+        <li>
+          <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+          <a href={`/posts/${post.id}/`}>{post.data.title}</a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">No articles yet.</p>
+  )}
+</Base>

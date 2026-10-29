@@ -2,32 +2,88 @@
 
 **Built on experience. Shared with everyone.**
 
-ChicanoDev is a personal educational project dedicated to sharing practical knowledge about Linux, software development, DevOps, infrastructure, troubleshooting, and AI automation.
+Practical Linux, DevOps, programming, and AI automation tutorials. The site is published at [chicanodev.github.io](https://chicanodev.github.io/).
 
-The goal is to make technical knowledge more accessible, particularly to Chicanos, Latinx people, LGBTQIA+ communities, and others historically underrepresented in technology.
+## Requirements
 
-Everyone is welcome to learn.
+Node.js 24. The exact version is in `.node-version`.
 
-## What you'll find
+```sh
+nvm use 24
+npm install
+```
 
-- Linux and command-line tutorials
-- DevOps, Kubernetes, and infrastructure
-- Programming and terminal-based development workflows
-- AI and automation
-- Troubleshooting and lessons learned from real-world engineering
+`package.json` allows `>=24 <25`.
 
-## Website
+## Commands
 
-[Visit ChicanoDev](https://chicanodev.github.io/)
+```sh
+npm run dev       # local site at http://localhost:4321
+npm run build     # static site in dist/
+npm run preview   # serve dist/
+npm run check     # Astro and TypeScript
+npm test          # check, production build, link and content checks, browser tests
+```
 
-## Technology
+Browser tests use Playwright with Chromium. The first run needs:
 
-This website is built with Jekyll using the Chirpy theme and hosted on GitHub Pages.
+```sh
+npx playwright install chromium
+```
 
-## Contributing
+## New article
 
-Suggestions, corrections, and constructive feedback are welcome.
+Add `src/content/posts/your-slug.md`. The filename is the URL slug. This file is served at `/posts/your-slug/`.
 
-## License
+```md
+---
+title: "Post title"
+date: 2026-11-01 09:00:00 -0500
+description: "One or two sentences."
+categories: [linux]
+tags: [shell]
+---
 
-See the repository's license for applicable terms.
+## First section
+
+Write the article here. Do not add an H1. The title field is the page heading.
+```
+
+`updatedDate` and `draft: true` are optional. Drafts are omitted from production builds.
+
+For a YouTube embed or a local terminal recording, use MDX (`your-slug.mdx`) and the same front matter:
+
+```mdx
+import YouTube from '../../components/YouTube.astro';
+import TerminalRecording from '../../components/TerminalRecording.astro';
+
+## Demo
+
+<YouTube id="videoId" title="What the recording shows" />
+
+<TerminalRecording src="/recordings/demo.mp4" title="Installing the tool" />
+```
+
+Put local videos in `public/recordings/`. `src` must be a site path such as `/recordings/demo.mp4`. YouTube uses the privacy-enhanced embed and does not add a player script of our own.
+
+## Theme
+
+Dark is the signature theme. The first visit follows the system preference. The header control saves an explicit choice in `localStorage` under `chicanodev-theme`.
+
+## Analytics
+
+Production builds load Google Analytics `G-VK281QV7N1`, the measurement ID already set on the Jekyll site. No other tracker is included. Set `analyticsId` to `''` in `src/data/site.ts` to turn it off. Local `dev` does not load it. `preview` serves the production build, so it does.
+
+## GitHub Pages
+
+The site is a static export for `https://chicanodev.github.io` with `base: '/'`.
+
+`.github/workflows/deploy.yml` runs the full check and test suite on the commit being published, then uploads `dist` and deploys. That job runs only for pushes to `main` and for manual runs on `main`. Pull requests and other branches run the same tests and do not deploy. A green check on a different workflow is not what gates the deploy. The publish job runs the tests itself.
+
+Repository setting that must stay as it is: **Settings → Pages → Build and deployment → Source: GitHub Actions**. This migration does not change repository settings. Do not switch Pages back to branch deploys.
+
+`public/.nojekyll` is copied into the build so GitHub Pages will not run Jekyll on the artifact.
+
+## Fonts
+
+Atkinson Hyperlegible and IBM Plex Mono are vendored at build time and used under the SIL Open Font License. See `NOTICE`.

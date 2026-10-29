@@ -1,0 +1,110 @@
+---
+import Base from './Base.astro';
+import { formatDate, readingMinutes, slugify, type Post } from '../lib/posts';
+import { site } from '../data/site';
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  post: Post;
+  headings: Heading[];
+  newer?: Post;
+  older?: Post;
+}
+
+const { post, headings, newer, older } = Astro.props;
+const minutes = readingMinutes(post.body);
+const toc = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const jsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: post.data.title,
+  description: post.data.description,
+  datePublished: post.data.date.toISOString(),
+  dateModified: (post.data.updatedDate ?? post.data.date).toISOString(),
+  author: {
+    '@type': 'Person',
+    name: site.author,
+    url: site.github,
+  },
+  mainEntityOfPage: canonical.href,
+  keywords: post.data.tags.join(', '),
+}).replace(/</g, '\\u003c');
+---
+
+<Base
+  title={post.data.title}
+  description={post.data.description}
+  type="article"
+  published={post.data.date}
+  updated={post.data.updatedDate ?? post.data.date}
+  tags={post.data.tags}
+>
+  <article>
+    <header class="article-header">
+      <p class="meta">
+        <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+        {', '}
+        {minutes} min read
+        {post.data.updatedDate && (
+          <>
+            {'. Updated '}
+            <time datetime={post.data.updatedDate.toISOString()}>{formatDate(post.data.updatedDate)}</time>
+          </>
+        )}
+      </p>
+      <h1>{post.data.title}</h1>
+      <p class="lede">{post.data.description}</p>
+      {post.data.categories.length > 0 && (
+        <p class="tax">
+          Topics:{' '}
+          {post.data.categories.map((name, index) => (
+            <span>
+              {index > 0 && ', '}
+              <a href={`/categories/${slugify(name)}/`}>{name}</a>
+            </span>
+          ))}
+        </p>
+      )}
+      {post.data.tags.length > 0 && (
+        <p class="tax">
+          Tags:{' '}
+          {post.data.tags.map((name, index) => (
+            <span>
+              {index > 0 && ', '}
+              <a href={`/tags/${slugify(name)}/`}>{name}</a>
+            </span>
+          ))}
+        </p>
+      )}
+    </header>
+    <div class="article-grid">
+      <div class="content">
+        <slot />
+      </div>
+      {toc.length > 0 && (
+        <nav class="toc" aria-label="On this page">
+          <p>On this page</p>
+          <ol>
+            {toc.map((heading) => (
+              <li class={`depth-${heading.depth}`}>
+                <a href={`#${heading.slug}`}>{heading.text}</a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+    </div>
+    <nav class="pager" aria-label="More articles">
+      {newer && <a href={`/posts/${newer.id}/`}>Newer: {newer.data.title}</a>}
+      {older && <a href={`/posts/${older.id}/`}>Older: {older.data.title}</a>}
+      <a href="/posts/">All articles</a>
+    </nav>
+  </article>
+  <script type="application/ld+json" set:html={jsonLd} />
+</Base>

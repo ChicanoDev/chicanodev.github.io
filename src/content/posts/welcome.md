@@ -1,0 +1,121 @@
+---
+title: "Welcome to ChicanoDev"
+date: 2026-10-28 22:43:41 -0500
+categories: [welcome, introduction]
+tags: [linux, devops, programming, chicanodev]
+description: "Why I started ChicanoDev, how a Compaq Portable helped launch my career in technology, and why I believe engineering knowledge should be shared."
+---
+
+## It started with a little green screen
+
+I was lucky enough to grow up with a computer in my house back in the early '90s. Yes, I'm that old.
+
+One of the privileges I had growing up was having two nerdy parents.
+
+My dad served in the Air Force during Vietnam. After coming home, he used his GI Bill to attend the University of New Mexico in Albuquerque, where he encountered his first computer. Back then, programming involved things like punched cards. For those of you who remember Scantron tests from school, imagine something along those lines, except the cards were used to feed instructions and data into a computer.
+
+My mom, like many women of her generation, went to school to become a secretary. She started her training on typewriters, eventually moved to word processors, and later worked with computers.
+
+While working as an administrative assistant at Compaq Computer, she brought home our first real family PC: a Compaq Portable.
+
+By then, those machines had been around for years. According to my mom, the office had so many old Compaq Portables lying around that some were literally being used as doorstops.
+
+One of those doorstops changed my life.
+
+That little computer booted DOS 3.1 from a floppy disk, with programs loaded from another. I remember sitting in front of its tiny screen, completely fascinated by that soft green glow.
+
+I didn't know it then, but I was looking at the beginning of my career.
+
+## From dBase III to Linux
+
+Part of my mom's job involved maintaining databases, so we had a book at home called *Programming in dBase III*.
+
+I asked my parents if I could read it and learn how to code.
+
+They explained what dBase III was and helped point me toward C++. That's where my journey into programming really began.
+
+A few years later, I installed Slackware Linux for the first time.
+
+If you've never installed Linux from a giant stack of floppy disks, consider yourself fortunate. I went through that process more than once, and it wasn't always pretty.
+
+But I was hooked.
+
+Over the years, that curiosity turned into a career spanning systems administration, Linux, infrastructure, software development, DevOps, and platform engineering.
+
+I've worked in the public sector and private sector, at large software companies and small AI startups, and plenty of places in between.
+
+I've learned a lot, made plenty of mistakes, broken things, fixed things, and spent more hours troubleshooting computers than I care to admit.
+
+And I'm still learning.
+
+## Why ChicanoDev exists
+
+Throughout my career, there's something I've noticed almost everywhere I've worked.
+
+I've usually been one of the few Hispanic people on my team. Sometimes, I was the only one.
+
+Even in Albuquerque, New Mexico, a city with a large Hispanic population, I once found myself as the lone Hispanic on a team of roughly 30 systems administrators.
+
+That experience stuck with me.
+
+I know how fortunate I was to have access to computers at an early age. More importantly, I had parents who encouraged my curiosity and helped me explore something I didn't yet understand.
+
+Not everyone grows up with those opportunities.
+
+Not everyone has someone they can ask when they're confused about Linux, programming, networking, or how to get started in technology.
+
+And not everyone sees people who look like them working in the fields they're interested in pursuing.
+
+I can't solve all of those problems with a blog or a few videos.
+
+But I can share what I've learned.
+
+That's why I created ChicanoDev.
+
+I want to help other Chicanos, Latinx people, and people from communities that have historically been underrepresented in technology get a little bit of that same head start I was fortunate enough to receive.
+
+That includes LGBTQIA+ folks, too. I'm a proud ally, and I want ChicanoDev to be a place where people can learn, ask questions, and grow without having to worry about whether their identity makes them welcome.
+
+And if you're not part of one of those communities? You're welcome here, too.
+
+Knowledge isn't something we should hoard.
+
+
+## What you'll find here
+
+ChicanoDev is where I plan to share practical knowledge from my years working in IT and software engineering.
+
+I'll be covering things like:
+
+- **Linux and the command line:** The tools, shortcuts, and techniques I use every day.
+- **DevOps and platform engineering:** Containers, Kubernetes, automation, CI/CD, and infrastructure.
+- **Programming and development workflows:** How I work with tools like Neovim, tmux, Git, and the shell.
+- **AI Automation:** How to make your laziness work for you. Work smarter, automate the boring stuff, and get back to the things you'd rather be doing.
+- **Troubleshooting:** Realistic problems, how to investigate them, and what I've learned from fixing them.
+- **Lessons from experience:** Things I wish someone had explained to me earlier in my career.
+
+Some posts will be beginner-friendly. Others will get pretty technical.
+
+I'll also be creating videos to demonstrate many of these topics, because sometimes seeing something in action makes more sense than reading about it.
+
+I don't claim to know everything, and I certainly don't claim that my way is always the best way.
+
+I'll show you how I do things, explain why, and hopefully give you something useful to take back to your own work.
+
+## Let's learn from each other
+
+I originally started ChicanoDev because I wanted to share what I'd learned. Life got busy, and this project sat unfinished for longer than I intended.
+
+But the reason I started it never went away.
+
+I've been fortunate to build a career doing something I genuinely enjoy. Along the way, people have helped me, taught me things, answered my questions, and given me opportunities.
+
+I'd like to pass some of that along.
+
+Maybe you're a student trying to figure out where to start. Maybe you're working your first IT job. Maybe you're an experienced engineer looking for a better way to do something.
+
+Whoever you are, I hope you find something useful here.
+
+And if something I share helps you solve a problem, learn a new skill, or feel a little more confident in your abilities, then ChicanoDev is doing exactly what I created it to do.
+
+**Welcome to ChicanoDev. Let's share what we know.**

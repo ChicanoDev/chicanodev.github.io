@@ -1,0 +1,51 @@
+---
+const path = Astro.url.pathname;
+const items = [
+  { href: '/', label: 'Home' },
+  { href: '/posts/', label: 'Articles' },
+  { href: '/categories/', label: 'Topics' },
+  { href: '/about/', label: 'About' },
+];
+
+function current(href: string): 'page' | undefined {
+  if (href === '/') return path === '/' ? 'page' : undefined;
+  return path === href || path.startsWith(href) ? 'page' : undefined;
+}
+---
+
+<header class="site-header wrap">
+  <a class="wordmark" href="/">Chicano<span class="wordmark-accent">Dev</span></a>
+  <nav class="site-nav" aria-label="Primary">
+    <ul class="nav-list">
+      {items.map((item) => (
+        <li>
+          <a href={item.href} aria-current={current(item.href)}>{item.label}</a>
+        </li>
+      ))}
+    </ul>
+    <button
+      class="theme-toggle"
+      type="button"
+      data-theme-toggle
+      aria-pressed="true"
+      aria-label="Switch to light mode"
+    >
+      <svg class="theme-icon theme-when-dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+        <path
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          d="M12 3.25v2.1M12 18.65v2.1M4.75 12h2.1M17.15 12h2.1M6.2 6.2l1.5 1.5M16.3 16.3l1.5 1.5M17.8 6.2l-1.5 1.5M7.7 16.3l-1.5 1.5"
+        ></path>
+      </svg>
+      <svg class="theme-icon theme-when-light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          fill="currentColor"
+          d="M14.8 3.2a8.8 8.8 0 1 0 6 14.5 7.1 7.1 0 1 1-6-14.5z"
+        ></path>
+      </svg>
+    </button>
+  </nav>
+</header>

@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPosts, groupBy } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const tags = groupBy(await getPosts(), 'tags');
+  return tags.map((tag) => ({ params: { tag: tag.slug } }));
+}
+
+const { tag } = Astro.params;
+const group = groupBy(await getPosts(), 'tags').find((item) => item.slug === tag);
+if (!group) {
+  throw new Error(`Missing tag ${tag}`);
+}
+const label = group.posts.length === 1 ? 'article' : 'articles';
+---
+
+<Base title={group.name} description={`ChicanoDev articles tagged ${group.name}.`}>
+  <h1>{group.name}</h1>
+  <p class="lede">{group.posts.length} {label} with this tag.</p>
+  <div class="card-list block-gap">
+    {group.posts.map((post) => <PostCard post={post} />)}
+  </div>
+  <p class="more"><a href="/tags/">All tags</a></p>
+</Base>

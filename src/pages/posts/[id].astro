@@ -1,0 +1,26 @@
+---
+import { render } from 'astro:content';
+import Article from '../../layouts/Article.astro';
+import { getPosts } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post) => ({ params: { id: post.id } }));
+}
+
+const { id } = Astro.params;
+const posts = await getPosts();
+const index = posts.findIndex((post) => post.id === id);
+const post = posts[index];
+if (!post) {
+  throw new Error(`Missing post ${id}`);
+}
+
+const { Content, headings } = await render(post);
+const newer = index > 0 ? posts[index - 1] : undefined;
+const older = posts[index + 1];
+---
+
+<Article post={post} headings={headings} newer={newer} older={older}>
+  <Content />
+</Article>
