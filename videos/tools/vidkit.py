@@ -586,9 +586,54 @@ def _cmd_chapters(argv):
     return 0
 
 
+def _cmd_segments(argv):
+    """Numbered narration chunks with the exact filename to record each one as."""
+    import narration
+    for series, slug in _select(argv):
+        folder = episode_dir(series, slug)
+        selected = narration.load_alignment(folder).get("selected") or {}
+        print(f"=== {series}/{slug}: record each segment as videos/series/{series}/{slug}/narration/<name>.m4a (or .wav/.mp3)\n")
+        for seg in narration.episode_segments(folder):
+            try:
+                state = "recorded" if narration.resolve_take(folder / "narration", seg.id, selected) else "todo"
+            except narration.AmbiguousTake:
+                state = "pick take"
+            print(f"{seg.index:>2}. [{state}] {seg.id}  ->  narration/{seg.id}.m4a")
+            print(f"      {seg.text}\n")
+    return 0
+
+
+def _cmd_check_audio(argv):
+    """Validate every segment recording; print the fix for each problem."""
+    import narration
+    failed = False
+    for series, slug in _select(argv):
+        folder = episode_dir(series, slug)
+        selected = narration.load_alignment(folder).get("selected") or {}
+        print(f"=== {series}/{slug}")
+        for seg in narration.episode_segments(folder):
+            try:
+                take = narration.resolve_take(folder / "narration", seg.id, selected)
+                if take is None:
+                    print(f"!! {seg.id}: not recorded. Save it as narration/{seg.id}.m4a")
+                    failed = True
+                    continue
+                problems = narration.audio_problems(narration.measure(take))
+            except (narration.AmbiguousTake, narration.BadAudio) as err:
+                print(f"!! {seg.id}: {err}")
+                failed = True
+                continue
+            print(f"{'OK' if not problems else '!!'} {seg.id}  ({take.name})")
+            for problem in problems:
+                print(f"     {problem}")
+            failed = failed or bool(problems)
+    return 1 if failed else 0
+
+
 COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn,
             "verify": _cmd_verify, "compile": _cmd_compile,
-            "script": _cmd_script, "pace": _cmd_pace, "mux": _cmd_mux, "chapters": _cmd_chapters}
+            "script": _cmd_script, "pace": _cmd_pace, "mux": _cmd_mux, "chapters": _cmd_chapters,
+            "segments": _cmd_segments, "check-audio": _cmd_check_audio}
 
 
 def main(argv=None):

@@ -222,3 +222,16 @@ def stitch(report, dst, pause=0.3, force=False):
     Path(dst).parent.mkdir(parents=True, exist_ok=True)
     run_stage(Path(dst), key, work, force)
     return Path(dst)
+
+
+def load_alignment(folder):
+    """alignment.yaml as a dict ({} when absent). Keys used so far: `selected`, `ids`."""
+    import yaml
+    path = Path(folder) / "alignment.yaml"
+    return (yaml.safe_load(path.read_text()) or {}) if path.exists() else {}
+
+
+def episode_segments(folder):
+    folder = Path(folder)
+    ids = load_alignment(folder).get("ids") or {}
+    return segments_from_voiceover((folder / "voiceover.md").read_text(), ids)
