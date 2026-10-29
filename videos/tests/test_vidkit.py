@@ -207,3 +207,25 @@ class TestBuildTape:
         out = vidkit.build_tape("Set FontSize 46", "Type \"ls\"", "build/x/v.mp4")
         assert out.splitlines()[0] == "Output build/x/v.mp4"
         assert out.index("Set FontSize 46") < out.index('Type "ls"')
+
+
+class TestCaptionStyle:
+    """libass treats SRT as a 288px-tall canvas, so pixel sizes must be scaled down."""
+
+    def parse(self, style):
+        return dict(part.split("=", 1) for part in style.split(","))
+
+    def test_288px_video_keeps_pixel_values(self):
+        style = self.parse(vidkit.caption_force_style(288, font_px=20, margin_px=10, outline_px=2))
+        assert float(style["Fontsize"]) == pytest.approx(20)
+        assert float(style["MarginV"]) == pytest.approx(10)
+        assert float(style["Outline"]) == pytest.approx(2)
+
+    def test_taller_video_scales_values_down(self):
+        style = self.parse(vidkit.caption_force_style(1920, font_px=96, margin_px=480, outline_px=6))
+        assert float(style["Fontsize"]) == pytest.approx(96 * 288 / 1920)
+        assert float(style["MarginV"]) == pytest.approx(480 * 288 / 1920)
+
+    def test_caption_is_bottom_centered(self):
+        style = self.parse(vidkit.caption_force_style(1080, font_px=40, margin_px=48, outline_px=3))
+        assert style["Alignment"] == "2"

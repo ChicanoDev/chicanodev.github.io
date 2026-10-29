@@ -1,5 +1,7 @@
 """vidkit: build, lint, caption and render the ChicanoDev VHS episodes."""
 import re
+import shutil
+import subprocess
 import sys
 import textwrap
 from dataclasses import dataclass
@@ -217,7 +219,89 @@ def _cmd_lint(argv):
     return 1 if failed else 0
 
 
-COMMANDS = {"lint": _cmd_lint}
+ORIENTATIONS = ("vertical", "horizontal")
+IMAGE = "chicanodev-vhs"
+
+
+def caption_force_style(height, font_px, margin_px, outline_px):
+    """ASS force_style with pixel sizes scaled to libass's 288px SRT canvas."""
+    k = 288 / height
+    return (f"Fontname=IBM Plex Mono,Bold=1,Fontsize={font_px * k:.3f},MarginV={margin_px * k:.3f},"
+            f"Outline={outline_px * k:.3f},Shadow=0,Alignment=2")
+
+
+CAPTION_STYLE = {
+    "vertical": caption_force_style(1920, font_px=64, margin_px=420, outline_px=5),
+    "horizontal": caption_force_style(1080, font_px=44, margin_px=56, outline_px=4),
+}
+
+
+def episode_id(series, slug):
+    return f"{series}-{slug}"
+
+
+def _select(argv):
+    wanted = set(argv)
+    return [(s, n) for s, n in EPISODES if not wanted or f"{s}/{n}" in wanted or n in wanted or s in wanted]
+
+
+def _docker(*args, entrypoint=None):
+    cmd = ["docker", "run", "--rm", "-v", f"{ROOT}:/vhs"]
+    if entrypoint:
+        cmd += ["--entrypoint", entrypoint]
+    cmd += [IMAGE, *args]
+    subprocess.run(cmd, check=True)
+
+
+def write_srt(series, slug):
+    folder = episode_dir(series, slug)
+    beats = parse_voiceover((folder / "voiceover.md").read_text())
+    path = ROOT / "build" / episode_id(series, slug) / "captions.srt"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(format_srt(make_cues(beats)))
+    return path
+
+
+def _cmd_srt(argv):
+    for series, slug in _select(argv):
+        print(write_srt(series, slug))
+    return 0
+
+
+def _cmd_render(argv):
+    for series, slug in _select(argv):
+        eid = episode_id(series, slug)
+        body = (episode_dir(series, slug) / "body.tape").read_text()
+        for orient in ORIENTATIONS:
+            settings = (ROOT / "common" / f"{orient}.settings.tape").read_text()
+            tape = ROOT / "build" / eid / f"{orient}.tape"
+            tape.parent.mkdir(parents=True, exist_ok=True)
+            tape.write_text(build_tape(settings, body, f"build/{eid}/{orient}-raw.mp4"))
+            _docker(f"build/{eid}/{orient}.tape")
+    return 0
+
+
+def _cmd_burn(argv):
+    for series, slug in _select(argv):
+        eid = episode_id(series, slug)
+        write_srt(series, slug)
+        for orient in ORIENTATIONS:
+            style = CAPTION_STYLE[orient]
+            out = ROOT / "out" / orient
+            out.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / "build" / eid / "captions.srt", out / f"{eid}.srt")
+            _docker(
+                "-y", "-i", f"build/{eid}/{orient}-raw.mp4",
+                "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+                "-vf", f"subtitles=build/{eid}/captions.srt:force_style='{style}'",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
+                f"out/{orient}/{eid}.mp4",
+                entrypoint="ffmpeg",
+            )
+    return 0
+
+
+COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn}
 
 
 def main(argv=None):
