@@ -5,6 +5,8 @@
 Hide
 Type "export PS1='$ '"
 Enter
+Type "cd ~"
+Enter
 Type "mkdir -p proj/src proj/docs"
 Enter
 Type "echo 'TODO fix login' > proj/src/app.py"

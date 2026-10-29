@@ -5,7 +5,7 @@
 Hide
 Type "export PS1='$ '"
 Enter
-Type "mkdir stuff && touch stuff/a stuff/b"
+Type "cd ~ && mkdir stuff && touch stuff/a stuff/b"
 Enter
 Type "clear"
 Enter

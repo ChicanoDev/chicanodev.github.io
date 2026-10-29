@@ -5,7 +5,7 @@
 Hide
 Type "export PS1='$ '"
 Enter
-Type "mkdir -p play && cd play"
+Type "cd ~ && mkdir -p play && cd play"
 Enter
 Type "clear"
 Enter

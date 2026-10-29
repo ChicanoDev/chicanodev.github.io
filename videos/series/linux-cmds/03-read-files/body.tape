@@ -5,6 +5,8 @@
 Hide
 Type "export PS1='$ '"
 Enter
+Type "cd ~"
+Enter
 Type "seq 1 200 | sed 's/^/line /' > log.txt"
 Enter
 Type `printf 'a\nb\n' > one`

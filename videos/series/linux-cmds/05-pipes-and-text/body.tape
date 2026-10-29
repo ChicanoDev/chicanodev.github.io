@@ -5,6 +5,8 @@
 Hide
 Type "export PS1='$ '"
 Enter
+Type "cd ~"
+Enter
 Type `printf 'name,lang\nana,python\nbo,go\ncy,rust\ndee,go\n' > people.csv`
 Enter
 Type "clear"
