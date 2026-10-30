@@ -1,4 +1,6 @@
 """vidkit: build, lint, caption and render the ChicanoDev VHS episodes."""
+import importlib.util
+import os
 import re
 import shutil
 import subprocess
@@ -614,6 +616,7 @@ def _cmd_segments(argv):
     for series, slug in _select(argv):
         folder = episode_dir(series, slug)
         selected = narration.load_alignment(folder).get("selected") or {}
+        (folder / "narration").mkdir(exist_ok=True)
         print(f"=== {series}/{slug}: record each segment as videos/series/{series}/{slug}/narration/<name>.m4a (or .wav/.mp3)\n")
         for seg in narration.episode_segments(folder):
             try:
@@ -917,11 +920,40 @@ COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _
             "approve": _cmd_approve, "backlog": _cmd_backlog}
 
 
+NEEDS_VENV = {"segments", "check-audio", "transcribe", "transcript", "build", "batch-build", "review",
+              "approve", "backlog", "compile"}
+SETUP = "uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt"
+
+
+def _has_module(name):
+    return importlib.util.find_spec(name) is not None
+
+
+def _ensure_env(command):
+    """The narration commands need the project venv (PyYAML, faster-whisper, numpy). Switch to it
+    automatically; if it does not exist, say how to make it. Returns an exit code, or None to carry on."""
+    if command not in NEEDS_VENV:
+        return None
+    venv = ROOT / ".venv"
+    python = venv / "bin" / "python"
+    if python.exists():
+        if Path(sys.prefix).resolve() != venv.resolve():
+            os.execv(str(python), [str(python), *sys.argv])
+        return None
+    if not _has_module("yaml"):
+        print(f"{command} needs the project's Python environment, which is not set up yet. From videos/ run:\n  {SETUP}")
+        return 1
+    return None
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv[0] not in COMMANDS:
         print(f"usage: vidkit.py {{{'|'.join(COMMANDS)}}} [episode ...]")
         return 2
+    early = _ensure_env(argv[0])
+    if early is not None:
+        return early
     names = _names(argv[1:])
     if names and not _select(names):
         print(f"unknown episode or series: {' '.join(names)}. Try one like linux-fs/01-no-c-drive or linux-fs.")

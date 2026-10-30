@@ -2,7 +2,7 @@
 
 You write the script, record a few sentences at a time, and one command builds a captioned, branded Short and horizontal episode **timed to your voice**. You never read against the video and never move a subtitle.
 
-All commands run from `videos/`. Use `.venv/bin/python` (see [Setup](../README.md#setup-for-the-narration-pipeline)); the examples write `python3 tools/vidkit.py` for short.
+All commands run from `videos/`, written as `python3 tools/vidkit.py ...`. Do the one-time [setup](../README.md#setup-for-the-narration-pipeline) first; after that the tool switches to the project's `.venv` by itself, so plain `python3` works. If the setup is missing it tells you the exact command to run.
 
 ```text
 script  ->  record segments  ->  check-audio  ->  build  ->  review on phone  ->  approve  ->  publish by hand

@@ -154,3 +154,51 @@ class TestTranscriptCommand:
     def test_before_transcribing_tells_user_what_to_run(self, episode, capsys):
         assert vidkit.main(["transcript", "demo/01-ep"]) == 1
         assert "transcribe" in capsys.readouterr().out
+
+
+class TestVenvGuard:
+    """Running with the system python3 must not crash with ModuleNotFoundError."""
+
+    def test_new_command_reexecs_into_project_venv(self, episode, monkeypatch, tmp_path):
+        venv_python = tmp_path / ".venv" / "bin" / "python"
+        venv_python.parent.mkdir(parents=True)
+        venv_python.write_text("")
+        calls = []
+        monkeypatch.setattr(vidkit.os, "execv", lambda path, args: calls.append((path, args)))
+        monkeypatch.setattr(vidkit.sys, "prefix", "/usr/local")  # pretend: system python
+        vidkit.main(["segments", "demo/01-ep"])
+        assert calls and calls[0][0] == str(venv_python)
+        assert calls[0][1][1:] == vidkit.sys.argv
+
+    def test_legacy_command_does_not_reexec(self, episode, monkeypatch, tmp_path):
+        (tmp_path / ".venv" / "bin").mkdir(parents=True)
+        (tmp_path / ".venv" / "bin" / "python").write_text("")
+        calls = []
+        monkeypatch.setattr(vidkit.os, "execv", lambda *a: calls.append(a))
+        monkeypatch.setattr(vidkit.sys, "prefix", "/usr/local")
+        vidkit.main(["lint", "demo/01-ep"])
+        assert calls == []
+
+    def test_already_in_venv_does_not_loop(self, episode, monkeypatch, tmp_path):
+        (tmp_path / ".venv" / "bin").mkdir(parents=True)
+        (tmp_path / ".venv" / "bin" / "python").write_text("")
+        calls = []
+        monkeypatch.setattr(vidkit.os, "execv", lambda *a: calls.append(a))
+        monkeypatch.setattr(vidkit.sys, "prefix", str(tmp_path / ".venv"))
+        vidkit.main(["segments", "demo/01-ep"])
+        assert calls == []
+
+    def test_no_venv_and_no_yaml_prints_setup_command(self, episode, monkeypatch, capsys):
+        monkeypatch.setattr(vidkit.sys, "prefix", "/usr/local")
+        monkeypatch.setattr(vidkit, "_has_module", lambda name: False)
+        assert vidkit.main(["segments", "demo/01-ep"]) == 1
+        out = capsys.readouterr().out
+        assert "uv venv --python 3.12" in out and "requirements.txt" in out
+
+
+class TestSegmentsCreatesFolder:
+    def test_narration_folder_is_created_so_you_know_where_to_save(self, episode, capsys):
+        assert not (episode / "narration").exists()
+        vidkit.main(["segments", "demo/01-ep"])
+        assert (episode / "narration").is_dir()
+        assert "series/demo/01-ep/narration" in capsys.readouterr().out
