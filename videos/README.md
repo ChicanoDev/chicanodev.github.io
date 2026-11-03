@@ -53,7 +53,8 @@ Every command takes optional episode names (`linux-fs`, `01-no-c-drive`, or `lin
 **Preferred: narration-first.** Record 2–3 sentences per section, build, review, approve. The video is timed to your voice and the captions come from what you actually said. See [docs/video-production-workflow.md](docs/video-production-workflow.md).
 
 ```sh
-python3 tools/vidkit.py segments linux-fs/01-no-c-drive      # what to record, and the filenames
+python3 tools/vidkit.py                                      # all commands, grouped by workflow stage
+python3 tools/vidkit.py record linux-fs/01-no-c-drive        # interactive recorder; quit and resume any time
 python3 tools/vidkit.py build linux-fs/01-no-c-drive         # transcribe, sync, caption, brand
 python3 tools/vidkit.py approve linux-fs/01-no-c-drive       # after watching it on your phone
 ```

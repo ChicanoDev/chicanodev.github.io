@@ -5,7 +5,7 @@ You write the script, record a few sentences at a time, and one command builds a
 All commands run from `videos/`, written as `python3 tools/vidkit.py ...`. Do the one-time [setup](../README.md#setup-for-the-narration-pipeline) first; after that the tool switches to the project's `.venv` by itself, so plain `python3` works. If the setup is missing it tells you the exact command to run.
 
 ```text
-script  ->  record segments  ->  check-audio  ->  build  ->  review on phone  ->  approve  ->  publish by hand
+script  ->  record (vidkit record)  ->  check-audio  ->  build  ->  review on phone  ->  approve  ->  publish by hand
 ```
 
 ## 1. Script
@@ -31,7 +31,37 @@ The segment name comes from the heading (`Root home` becomes `02-root-home`). Do
 
 ## 3. Record
 
-Use QuickTime (File > New Audio Recording) or iPhone Voice Memos. Record **one section at a time**, at your natural pace, then save or AirDrop each into:
+```sh
+python3 tools/vidkit.py record linux-fs/02-where-programs-live
+```
+
+The studio shows each segment's script, records from your microphone, plays the take back, and files it for you. Nothing to name, export or move. The normal path per segment is three Enters:
+
+```text
+Enter  start recording  ->  read the script  ->  Enter  stop  ->  (take plays)  ->  Enter  approve
+```
+
+| At the prompt | Keys |
+|---|---|
+| script | `Enter` record, `s` skip for now, `q` save and quit |
+| after a take | `Enter` approve, `p` play again, `r` record again, `b`/`n` earlier/later take, `q` save and quit |
+| start screen | `Enter` continue where you left off, `l` pick any segment, `q` quit |
+
+- **Quit any time.** Run the same command tomorrow and it resumes at the first segment that is not approved. A take you recorded but did not approve is offered first, so a good recording is never lost.
+- **Approved** means `narration/<segment>.wav` exists (48 kHz, mono, 16-bit). That is the file `check-audio`, `transcribe` and `build` read, so there is no extra step.
+- **Retakes are safe.** Every recording is kept in `narration/takes/<segment>.takeN.wav`. Replacing an approved take archives the old audio there first (`<segment>.prevN.<ext>`), and a failure partway never touches the take you had.
+- **Recording one segment:** `record <episode> --segment 04-local` (`04` or `local` also work). Choosing an approved segment asks before recording over it.
+- `record <episode> --status` lists approved / waiting / missing segments without touching the microphone. `record --list-devices` shows microphones; pick one with `--device <id or name>`. `--no-autoplay` turns off playback after each take.
+- Narration approval here is separate from `approve` (the finished video, step 7). Approving a take never builds or approves a video.
+- Check the microphone name on the start screen. A Bluetooth headset runs at 8-16 kHz and sounds thin, so the studio warns; choose the real mic with `--device`.
+- macOS asks for microphone permission for your terminal app the first time. If the take comes out silent, allow it under System Settings > Privacy & Security > Microphone and record again.
+- A recording is trimmed, loudness-normalised and checked later; your take files are never modified.
+
+When every segment is approved the studio runs the audio checks and prints the next two commands.
+
+### Recording in another app
+
+Still works: QuickTime (File > New Audio Recording) or iPhone Voice Memos, one section at a time, saved into:
 
 ```text
 series/linux-fs/01-no-c-drive/narration/01-hook.m4a
@@ -39,20 +69,33 @@ series/linux-fs/01-no-c-drive/narration/01-hook.m4a
 ```
 
 - Leave a beat of quiet at the start and end. Dead air is trimmed for you.
-- Slip? Just say the sentence again and keep going. Re-record the whole section if it is messy; it is only 2–3 sentences.
-- You do not need the video, a metronome, or to hit a time.
-- Your original files are never changed.
+- Slip? Say the sentence again and keep going, or re-record the section; it is only 2-3 sentences.
+- Files you save by hand count as approved. `record` shows them as Approved and archives them (never deletes) if you replace them.
 
-### Replace one take
+### Replace one take (manual files)
 
 Re-record `04-root-home` and save it over `narration/04-root-home.m4a`. Only that segment is reprocessed on the next build.
 
-If you want to keep both takes, save the new one as `04-root-home.take2.m4a`. With two files present the tools stop and ask you to choose. They never guess the newest. Pick one in `series/.../alignment.yaml`:
+If you save a second file as `04-root-home.take2.m4a`, the tools stop and ask you to choose. They never guess the newest. Pick one in `series/.../alignment.yaml`:
 
 ```yaml
 selected:
   04-root-home: 04-root-home.take2.m4a
 ```
+
+`record` will not overwrite a segment pinned this way; remove the `selected:` entry first.
+
+### Manual acceptance test (macOS, real microphone)
+
+Use an episode with no narration yet, or back up first: `cp -R series/linux-fs/02-where-programs-live/narration ~/narration-02.bak`. (Replacing a take archives the old audio and never deletes it, but a backup costs nothing.) Then:
+
+1. `record --list-devices` shows your microphone. `record <episode> --status` shows the segments.
+2. `record <episode> --device <your mic>`: the start screen names it; a Bluetooth headset triggers the warning.
+3. Enter, speak, Enter: the take plays back through the speakers/headphones, then Enter approves. `narration/<segment>.wav` appears.
+4. On another segment press `r` after a take: a second take is recorded, `b` replays the first, and Enter approves the one you chose.
+5. Press `q` mid-episode, run the command again: it resumes at the first unapproved segment, and an unapproved take is offered first.
+6. Unplug the microphone while recording (or deny permission): you get a plain message, no traceback, and earlier approved takes are untouched.
+7. Finish the episode, then `check-audio <episode>` passes and `build <episode> --dry-run` lists every segment.
 
 ## 4. Check the recordings
 
