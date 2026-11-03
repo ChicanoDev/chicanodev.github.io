@@ -718,7 +718,7 @@ def _cmd_transcript(argv):
     return 0 if complete else 1
 
 
-VALUE_FLAGS = ("--format", "--brand-placement", "--by")
+VALUE_FLAGS = ("--format", "--brand-placement", "--by", "--segment", "--device")
 FORMATS = {"vertical": ["vertical"], "horizontal": ["horizontal"], "both": ["vertical", "horizontal"]}
 
 
@@ -914,7 +914,75 @@ def _cmd_backlog(argv):
     return 0
 
 
-COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn,
+def _is_interactive():
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _cmd_record(argv):
+    """Interactive narration recorder. See `record --help`."""
+    import narration
+    import recorder
+    import studio
+    names = _names(argv)
+    backend = None
+    if "--list-devices" in argv:
+        backend = recorder.default_backend()
+        try:
+            devices = backend.list_devices()
+        except recorder.RecorderError as err:
+            print(f"!! {err}")
+            return 1
+        if not devices:
+            print("No microphones found. Plug one in or check System Settings > Sound > Input.")
+            return 1
+        for d in devices:
+            print(f"  {d.id:>3}  {d.name}  ({d.rate / 1000:g} kHz){'  [system default]' if d.default else ''}")
+        return 0
+    if not names:
+        print("record needs an episode, e.g. python3 tools/vidkit.py record linux-fs/02-where-programs-live")
+        return 2
+    episodes = _select(names)
+    if len(episodes) != 1:
+        print("record works on one episode at a time. Pick one: " + ", ".join(f"{s}/{n}" for s, n in episodes))
+        return 2
+    series, slug = episodes[0]
+    folder = episode_dir(series, slug)
+    try:
+        script = (folder / "voiceover.md").read_text()
+        segments = narration.episode_segments(folder)
+    except OSError:
+        print(f"!! {series}/{slug}: no voiceover.md to record from")
+        return 2
+    if not segments:
+        print(f"!! {series}/{slug}: voiceover.md has no timed sections. Each part to record starts with a heading "
+              "like: ## [0:00-0:10] Hook")
+        return 2
+    store = recorder.TakeStore(folder, narration.load_alignment(folder).get("selected") or {})
+    title = parse_title(script)
+    if "--status" in argv:
+        ui = studio.TerminalUI()
+        info = studio.Session(segments, store, None, ui, title=title, episode=f"{series}/{slug}").info()
+        ui.status(info)
+        return 0
+    if not _is_interactive():
+        print("record is interactive and needs a terminal (it reads single keypresses). Run it directly in a "
+              "terminal, not through a pipe or script. Use --status to check progress without recording.")
+        return 2
+    if shutil.which("ffmpeg") is None:
+        print("!! ffmpeg not found. Install it with: brew install ffmpeg")
+        return 1
+    backend = recorder.default_backend()
+    try:
+        device = backend.resolve(_flag(argv, "--device"))
+    except recorder.RecorderError as err:
+        print(f"!! {err}")
+        return 1
+    session = studio.Session(segments, store, backend, studio.TerminalUI(), title=title, episode=f"{series}/{slug}",
+                             device=device, autoplay="--no-autoplay" not in argv, only=_flag(argv, "--segment"))
+    return session.run()
+
+
+COMMANDS = {"record": _cmd_record, "lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _cmd_burn,
             "verify": _cmd_verify, "compile": _cmd_compile,
             "script": _cmd_script, "pace": _cmd_pace, "mux": _cmd_mux, "chapters": _cmd_chapters,
             "segments": _cmd_segments, "check-audio": _cmd_check_audio,
@@ -923,7 +991,7 @@ COMMANDS = {"lint": _cmd_lint, "srt": _cmd_srt, "render": _cmd_render, "burn": _
             "approve": _cmd_approve, "backlog": _cmd_backlog}
 
 
-NEEDS_VENV = {"segments", "check-audio", "transcribe", "transcript", "build", "batch-build", "review",
+NEEDS_VENV = {"record", "segments", "check-audio", "transcribe", "transcript", "build", "batch-build", "review",
               "approve", "backlog", "compile"}
 SETUP = "uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt"
 
@@ -947,15 +1015,6 @@ def _ensure_env(command):
         print(f"{command} needs the project's Python environment, which is not set up yet. From videos/ run:\n  {SETUP}")
         return 1
     return None
-
-
-def _cmd_record(argv):
-    print("record is not implemented yet")
-    return 2
-
-
-COMMANDS["record"] = _cmd_record
-NEEDS_VENV.add("record")
 
 
 def main(argv=None):

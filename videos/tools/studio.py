@@ -242,7 +242,10 @@ def _fmt_time(seconds):
 class TerminalUI:
     def __init__(self, out=None):
         self.out = out or sys.stdout
-        self.fd = sys.stdin.fileno()
+
+    @property
+    def fd(self):
+        return sys.stdin.fileno()
 
     # output
     def say(self, text=""):
@@ -366,7 +369,7 @@ class TerminalUI:
         import tty
         old = termios.tcgetattr(self.fd)
         try:
-            tty.setcbreak(self.fd)
+            tty.setcbreak(self.fd, termios.TCSANOW)  # NOW: do not drop a key typed early
             return os.read(self.fd, 1)
         finally:
             termios.tcsetattr(self.fd, termios.TCSADRAIN, old)
@@ -394,7 +397,7 @@ class TerminalUI:
         self.say("\n  Read naturally. Take your time.\n")
         self.say(f"  {cli_ui.paint('[Enter]', cli_ui.PURPLE)} Stop recording\n")
         try:
-            tty.setcbreak(self.fd)
+            tty.setcbreak(self.fd, termios.TCSANOW)  # NOW: do not drop a key typed early
             while True:
                 print(f"\r  {_fmt_time(capture.elapsed)}", end="", file=self.out, flush=True)
                 if select.select([self.fd], [], [], 0.1)[0]:

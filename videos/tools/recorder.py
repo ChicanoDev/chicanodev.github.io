@@ -338,6 +338,10 @@ class Device:
     default: bool = False
 
 
+def default_backend():
+    return SoundDeviceBackend()
+
+
 class SoundDeviceBackend:
     """Microphone capture and playback through sounddevice (PortAudio). Needs real hardware."""
 
