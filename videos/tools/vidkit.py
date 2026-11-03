@@ -9,6 +9,9 @@ import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # sibling modules when run as a script
+from cli_help import COMMAND_INFO  # noqa: E402,F401  (help registry; also used by tests)
+
 _SLEEP = re.compile(r"^Sleep\s+([\d.]+)(ms|s)\b")
 _SET_SPEED = re.compile(r"^Set\s+TypingSpeed\s+([\d.]+)(ms|s)\b")
 _TYPE = re.compile(r'^Type(?:@([\d.]+)(ms|s))?\s+(["\'`])(.*)\3\s*$')
@@ -946,11 +949,27 @@ def _ensure_env(command):
     return None
 
 
+def _cmd_record(argv):
+    print("record is not implemented yet")
+    return 2
+
+
+COMMANDS["record"] = _cmd_record
+NEEDS_VENV.add("record")
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if not argv or argv[0] not in COMMANDS:
-        print(f"usage: vidkit.py {{{'|'.join(COMMANDS)}}} [episode ...]")
+    import cli_help
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        print(cli_help.main_help())
+        return 0
+    if argv[0] not in COMMANDS:
+        print(cli_help.unknown_command(argv[0]))
         return 2
+    if {"-h", "--help"} & set(argv[1:]):
+        print(cli_help.command_help(argv[0]))
+        return 0
     early = _ensure_env(argv[0])
     if early is not None:
         return early
