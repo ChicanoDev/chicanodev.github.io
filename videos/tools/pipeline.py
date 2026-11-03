@@ -19,6 +19,7 @@ import vidkit
 
 CAPTION_CHARS = {"vertical": 32, "horizontal": 48}
 INTRO = Path("assets") / "branding" / "chicanodev-intro.mp4"
+TITLE_LOGO = Path("assets") / "branding" / "main-title-logo.png"
 
 
 class SyncFailed(Exception):
@@ -37,7 +38,7 @@ class Config:
     verbose: bool = False
     beat_tol: float = 0.3
     total_tol: float = 0.5
-    max_corrections: int = 2
+    max_corrections: int = 4
 
 
 @dataclass
@@ -137,10 +138,11 @@ def build_episode(series, slug, cfg, env):
         result.sync[orient] = sync
         result.stage_status[f"{orient}:render"] = raw_status
 
+        top_safe = compose.VERTICAL_TOP_SAFE if orient == "vertical" else 0
         master_path = work / f"{orient}-master.mp4"
         result.stage_status[f"{orient}:master"] = narration.run_stage(
-            master_path, narration.cache_key(raw, voice, expected_total, "master-v1"),
-            lambda: compose.master(raw, voice, master_path, min_seconds=expected_total), cfg.force)
+            master_path, narration.cache_key(raw, voice, expected_total, top_safe, "master-v2"),
+            lambda: compose.master(raw, voice, master_path, min_seconds=expected_total, top_safe=top_safe), cfg.force)
 
         cues = []
         for r in report:
@@ -150,6 +152,16 @@ def build_episode(series, slug, cfg, env):
         result.stage_status[f"{orient}:captions"] = narration.run_stage(
             captioned, narration.cache_key(master_path, burn_srt, vidkit.CAPTION_STYLE[orient], "burn-v1"),
             lambda: env.burn(master_path, burn_srt, captioned, orient), cfg.force)
+
+        logo = env.root / TITLE_LOGO
+        if logo.exists():  # title logo fades in over the hook; no time added, so cues and sync are untouched
+            titled = work / f"{orient}-titled.mp4"
+            result.stage_status[f"{orient}:logo"] = narration.run_stage(
+                titled, narration.cache_key(captioned, narration.file_sha(logo), orient, "logo-v1"),
+                lambda: compose.overlay_logo(captioned, logo, titled, orient), cfg.force)
+            captioned_for_final = titled
+        else:
+            captioned_for_final = captioned
 
         brand_path = work / f"{orient}-brand.mp4"
         brand_seconds = 0.0
@@ -163,8 +175,8 @@ def build_episode(series, slug, cfg, env):
         final.parent.mkdir(parents=True, exist_ok=True)
         brand_key = narration.file_sha(brand_path) if slots else ""
         result.stage_status[f"{orient}:final"] = narration.run_stage(
-            final, narration.cache_key(captioned, brand_key, placement, round(hook_end, 3), "final-v1"),
-            lambda: compose.assemble(captioned, brand_path, final, placement, hook_end), cfg.force)
+            final, narration.cache_key(captioned_for_final, brand_key, placement, round(hook_end, 3), "final-v1"),
+            lambda: compose.assemble(captioned_for_final, brand_path, final, placement, hook_end), cfg.force)
 
         shifted = compose.shift_cues(cues, placement, hook_end, brand_seconds)
         final.with_suffix(".srt").write_text(vidkit.format_srt(shifted))
@@ -210,10 +222,11 @@ def _synced_render(orient, body, periods, spans, expected_total, titles, work, e
                                       beat_tol=cfg.beat_tol, total_tol=cfg.total_tol)
         if cfg.verbose:
             env.log(report.markdown())
+            env.log(f"   periods {[round(p, 2) for p in current]}  measured {[None if m is None else round(m, 2) for m in measured]}")
         if report.ok:
             _write(state, json.dumps({"key": sync_key, "periods": current, "measured": measured, "raw_len": raw_len}))
             return current, report, raw, status
-        nxt = measure.corrected_periods(current, measured, raw_len)
+        nxt = measure.corrected_periods(current, measured, raw_len, targets=periods)
         if max(abs(a - b) for a, b in zip(nxt, current)) < 0.001:
             break  # nothing left to correct: further renders would be identical
         current = nxt
@@ -231,7 +244,7 @@ def _measure_starts(raw, timed):
     offsets = [retime.anchor_offset(b) for b in blocks]
     series = measure.ink_series(raw, 25)
     expected = [starts[i] + (offsets[i] or 0) for i in range(1, len(blocks))]
-    found = measure.find_clears(series, 25, expected)
+    found = measure.find_clears_chained(series, 25, expected)
     measured = [0.0] + [None if f is None else f - offsets[i] for i, f in zip(range(1, len(blocks)), found)]
     return measured, compose.seconds(raw)
 

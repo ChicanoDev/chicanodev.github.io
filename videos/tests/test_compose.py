@@ -107,6 +107,35 @@ class TestMaster:
         assert float(info(out)["format"]["duration"]) == pytest.approx(8.5, abs=0.15)
 
 
+def pixel_luma(path, x, y):
+    out = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-frames:v", "1", "-vf", f"format=gray,crop=1:1:{x}:{y}",
+                          "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
+    return out[0]
+
+
+class TestTopSafeZone:
+    """Instagram's feed overlays the account name on the top of a Reel, so vertical content must start lower."""
+
+    def bright_top(self, tmp_path):
+        raw = tmp_path / "raw.mp4"
+        ff("-f", "lavfi", "-i", "color=c=0x282a36:s=1080x1920:r=25:d=4", "-vf", "drawbox=x=0:y=0:w=1080:h=120:color=white:t=fill",
+           "-c:v", "libx264", "-pix_fmt", "yuv420p", str(raw))
+        return raw
+
+    def test_top_band_is_cleared_and_content_pushed_down(self, tmp_path):
+        raw, voice = self.bright_top(tmp_path), tone(tmp_path / "n.wav", 3)
+        out = compose.master(raw, voice, tmp_path / "m.mp4", top_safe=200)
+        assert pixel_luma(out, 540, 100) < 60       # safe zone: background fill, not the bright terminal bar
+        assert pixel_luma(out, 540, 230) > 200      # the bright bar now sits below the safe zone
+        v = [s for s in info(out)["streams"] if s["codec_type"] == "video"][0]
+        assert (v["width"], v["height"]) == (1080, 1920)
+
+    def test_default_leaves_frame_untouched(self, tmp_path):
+        raw, voice = self.bright_top(tmp_path), tone(tmp_path / "n.wav", 3)
+        out = compose.master(raw, voice, tmp_path / "m.mp4")
+        assert pixel_luma(out, 540, 100) > 200
+
+
 def master_clip(tmp_path, seconds=10, size="1080x1920"):
     return compose.master(lesson(tmp_path / "raw.mp4", seconds, size), tone(tmp_path / "n.wav", seconds - 1), tmp_path / "m.mp4")
 
@@ -154,6 +183,38 @@ class TestAssemble:
         v = [s for s in info(out)["streams"] if s["codec_type"] == "video"][0]
         assert (v["width"], v["height"], v["pix_fmt"], v["codec_name"]) == (1080, 1920, "yuv420p", "h264")
         assert info(out)["format"]["format_name"].startswith("mov")
+
+
+class TestLogoOverlay:
+    @pytest.fixture
+    def logo(self, tmp_path):
+        path = tmp_path / "logo.png"
+        ff("-f", "lavfi", "-i", "color=c=red:s=400x400", "-frames:v", "1", str(path))
+        return path
+
+    def centre_pixel(self, video, at, tmp_path):
+        raw = tmp_path / f"px{at}.rgb"
+        ff("-ss", str(at), "-i", str(video), "-frames:v", "1", "-vf", "format=rgb24,crop=2:2:iw/2:ih/2", "-f", "rawvideo",
+           "-pix_fmt", "rgb24", str(raw))
+        return tuple(raw.read_bytes()[:3])
+
+    @pytest.mark.parametrize("size,orient", [("1080x1920", "vertical"), ("1920x1080", "horizontal")])
+    def test_logo_shows_at_start_then_clears(self, tmp_path, logo, size, orient):
+        m = master_clip(tmp_path, size=size)
+        out = compose.overlay_logo(m, logo, tmp_path / "l.mp4", orient, seconds=1.5)
+        r, g, b = self.centre_pixel(out, 0.7, tmp_path)
+        assert r > 150 and g < 90 and b < 90, "logo should cover the centre early on"
+        r, g, b = self.centre_pixel(out, 3, tmp_path)
+        assert r < 80 and g < 80 and b < 80, "plain terminal background after the logo"
+
+    def test_length_audio_and_spec_unchanged(self, tmp_path, logo):
+        m = master_clip(tmp_path)
+        out = compose.overlay_logo(m, logo, tmp_path / "l.mp4", "vertical")
+        assert duration(out) == pytest.approx(duration(m), abs=0.1)
+        kinds = [s["codec_type"] for s in info(out)["streams"]]
+        assert kinds.count("audio") == 1
+        v = [s for s in info(out)["streams"] if s["codec_type"] == "video"][0]
+        assert (v["width"], v["height"], v["pix_fmt"], v["r_frame_rate"]) == (1080, 1920, "yuv420p", "30/1")
 
 
 class TestQa:
