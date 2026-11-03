@@ -1,0 +1,40 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 04-root-home
+audio_sha: 403d8fb92794e8575dce4f517f7adffc5e13d8360f81424b82dde2ea176a17ea
+words:
+- {text: 'Now,', start: 1.1, end: 1.82, conf: 0.459, asr: 'Now,'}
+- {text: slash, start: 2.72, end: 2.72, conf: 0.398, asr: slash}
+- {text: root., start: 2.72, end: 3.06, conf: 0.947, asr: root.}
+- {text: 'Careful,', start: 4.34, end: 4.7, conf: 0.959, asr: 'Careful,'}
+- {text: it, start: 5.08, end: 5.24, conf: 0.98, asr: it}
+- {text: is, start: 5.24, end: 5.38, conf: 0.93, asr: is}
+- {text: not, start: 5.38, end: 5.56, conf: 0.996, asr: not}
+- {text: the, start: 5.56, end: 5.76, conf: 0.993, asr: the}
+- {text: same, start: 5.76, end: 6.0, conf: 0.999, asr: same}
+- {text: as, start: 6.0, end: 6.24, conf: 0.989, asr: as}
+- {text: slash., start: 6.24, end: 6.58, conf: 0.868, asr: slash.}
+- {text: This, start: 7.58, end: 8.24, conf: 0.993, asr: This}
+- {text: is, start: 8.24, end: 8.46, conf: 0.996, asr: is}
+- {text: the, start: 8.46, end: 8.62, conf: 0.991, asr: the}
+- {text: home, start: 8.62, end: 8.88, conf: 0.951, asr: home}
+- {text: folder, start: 8.88, end: 9.18, conf: 0.987, asr: folder}
+- {text: of, start: 9.18, end: 9.54, conf: 0.994, asr: of}
+- {text: the, start: 9.54, end: 9.72, conf: 0.995, asr: the}
+- {text: root, start: 9.72, end: 9.94, conf: 0.989, asr: root}
+- {text: 'user,', start: 9.94, end: 10.36, conf: 0.995, asr: 'user,'}
+- {text: the, start: 10.98, end: 11.1, conf: 0.987, asr: the}
+- {text: all, start: 11.1, end: 11.42, conf: 0.97, asr: all}
+- {text: -powerful, start: 11.42, end: 11.92, conf: 0.731, asr: -powerful}
+- {text: admin., start: 11.92, end: 12.48, conf: 0.99, asr: admin.}
+- {text: Regular, start: 13.56, end: 13.76, conf: 0.984, asr: Regular}
+- {text: users, start: 13.76, end: 14.34, conf: 0.993, asr: users}
+- {text: get, start: 14.34, end: 14.82, conf: 0.981, asr: get}
+- {text: permission, start: 14.82, end: 15.24, conf: 0.996, asr: permission}
+- {text: denied., start: 15.24, end: 15.84, conf: 0.995, asr: denied.}
+- {text: You, start: 16.7, end: 16.86, conf: 0.995, asr: You}
+- {text: need, start: 16.86, end: 17.08, conf: 0.998, asr: need}
+- {text: sudo, start: 17.08, end: 17.56, conf: 0.74, asr: sudo}
+- {text: just, start: 17.56, end: 18.28, conf: 0.772, asr: just}
+- {text: to, start: 18.28, end: 18.56, conf: 0.983, asr: to}
+- {text: peek, start: 18.56, end: 18.86, conf: 0.976, asr: peek}
+- {text: inside., start: 18.86, end: 19.5, conf: 0.998, asr: inside.}

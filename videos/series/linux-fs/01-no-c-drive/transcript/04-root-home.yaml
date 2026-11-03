@@ -1,0 +1,54 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 04-root-home
+audio_sha: 43be7db8584888a15fcb5b508235a4249cfd4e86e907db517c4834a1ce93d53c
+words:
+- {text: Now, start: 0.0, end: 0.72, conf: 0.823, asr: Now}
+- {text: 'on', start: 0.72, end: 0.94, conf: 0.606, asr: 'on'}
+- {text: to, start: 0.94, end: 1.16, conf: 0.76, asr: to}
+- {text: slash, start: 1.16, end: 1.26, conf: 0.345, asr: slash}
+- {text: root., start: 1.26, end: 1.58, conf: 0.941, asr: root.}
+- {text: Remember, start: 2.74, end: 2.74, conf: 0.991, asr: Remember}
+- {text: that, start: 2.74, end: 3.36, conf: 0.858, asr: that}
+- {text: this, start: 3.36, end: 3.54, conf: 0.953, asr: this}
+- {text: is, start: 3.54, end: 3.66, conf: 0.99, asr: is}
+- {text: not, start: 3.66, end: 3.84, conf: 0.995, asr: not}
+- {text: the, start: 3.84, end: 4.0, conf: 0.991, asr: the}
+- {text: same, start: 4.0, end: 4.2, conf: 0.998, asr: same}
+- {text: as, start: 4.2, end: 4.36, conf: 0.875, asr: as}
+- {text: just, start: 4.36, end: 4.54, conf: 0.975, asr: just}
+- {text: slash., start: 4.54, end: 4.82, conf: 0.925, asr: slash.}
+- {text: This, start: 5.8, end: 6.16, conf: 0.994, asr: This}
+- {text: is, start: 6.16, end: 6.32, conf: 0.996, asr: is}
+- {text: the, start: 6.32, end: 6.48, conf: 0.994, asr: the}
+- {text: home, start: 6.48, end: 6.74, conf: 0.904, asr: home}
+- {text: folder, start: 6.74, end: 7.04, conf: 0.994, asr: folder}
+- {text: of, start: 7.04, end: 7.34, conf: 0.996, asr: of}
+- {text: the, start: 7.34, end: 7.54, conf: 0.993, asr: the}
+- {text: root, start: 7.54, end: 7.86, conf: 0.976, asr: root}
+- {text: 'user,', start: 7.86, end: 8.58, conf: 0.972, asr: 'user,'}
+- {text: the, start: 9.5, end: 9.54, conf: 0.99, asr: the}
+- {text: server's, start: 9.54, end: 10.1, conf: 0.946, asr: server's}
+- {text: all, start: 10.1, end: 10.38, conf: 0.99, asr: all}
+- {text: powerful, start: 10.38, end: 10.9, conf: 0.596, asr: powerful}
+- {text: admin., start: 10.9, end: 11.42, conf: 0.998, asr: admin.}
+- {text: Regular, start: 12.46, end: 12.86, conf: 0.976, asr: Regular}
+- {text: users, start: 12.86, end: 13.22, conf: 0.995, asr: users}
+- {text: will, start: 13.22, end: 13.46, conf: 0.997, asr: will}
+- {text: get, start: 13.46, end: 13.6, conf: 0.998, asr: get}
+- {text: permission, start: 13.6, end: 13.92, conf: 0.999, asr: permission}
+- {text: denied, start: 13.92, end: 14.38, conf: 0.959, asr: denied}
+- {text: when, start: 14.38, end: 14.62, conf: 0.991, asr: when}
+- {text: trying, start: 14.62, end: 14.84, conf: 0.998, asr: trying}
+- {text: to, start: 14.84, end: 14.98, conf: 0.998, asr: to}
+- {text: peek, start: 14.98, end: 15.2, conf: 0.986, asr: peek}
+- {text: into, start: 15.2, end: 15.42, conf: 0.988, asr: into}
+- {text: this, start: 15.42, end: 15.64, conf: 0.958, asr: this}
+- {text: folder., start: 15.64, end: 15.94, conf: 0.999, asr: folder.}
+- {text: You, start: 16.64, end: 16.78, conf: 0.97, asr: You}
+- {text: need, start: 16.78, end: 16.96, conf: 0.996, asr: need}
+- {text: to, start: 16.96, end: 17.12, conf: 0.997, asr: to}
+- {text: use, start: 17.12, end: 17.3, conf: 0.995, asr: use}
+- {text: sudo, start: 17.3, end: 17.66, conf: 0.885, asr: sudo}
+- {text: to, start: 17.66, end: 17.92, conf: 0.944, asr: to}
+- {text: see, start: 17.92, end: 18.16, conf: 0.996, asr: see}
+- {text: inside., start: 18.16, end: 18.56, conf: 0.983, asr: inside.}

@@ -1,0 +1,16 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 06-cta
+audio_sha: fb63350457169387299db5ea972436650fbda500f618943ec7b5a71631091139
+words:
+- {text: Next, start: 0.0, end: 0.82, conf: 0.736, asr: Next}
+- {text: 'up,', start: 0.82, end: 1.12, conf: 0.953, asr: 'up,'}
+- {text: where, start: 1.72, end: 1.88, conf: 0.867, asr: where}
+- {text: your, start: 1.88, end: 2.14, conf: 0.783, asr: your}
+- {text: programs, start: 2.14, end: 2.56, conf: 0.981, asr: programs}
+- {text: actually, start: 2.56, end: 3.26, conf: 0.986, asr: actually}
+- {text: live., start: 3.26, end: 3.92, conf: 0.997, asr: live.}
+- {text: Follow, start: 5.1, end: 5.18, conf: 0.972, asr: Follow}
+- {text: along, start: 5.18, end: 5.62, conf: 0.993, asr: along}
+- {text: at, start: 5.62, end: 5.98, conf: 0.93, asr: at}
+- {text: ChicanoDev, start: 5.98, end: 6.74, conf: 0.661, asr: ChicanoDev}
+- {text: .com, start: 6.74, end: 7.68, conf: 0.982, asr: .com}

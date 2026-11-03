@@ -1,0 +1,51 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 05-etc
+audio_sha: e5069e20b291ac2c11f9fcd41d4f1dc1fd991ee9f372b49caf132d8bc39fd227
+words:
+- {text: slash, start: 0.0, end: 0.4, conf: 0.062, asr: slash}
+- {text: etc, start: 0.4, end: 0.94, conf: 0.435, asr: etc}
+- {text: or, start: 0.94, end: 1.72, conf: 0.784, asr: or}
+- {text: etc, start: 1.72, end: 2.16, conf: 0.464, asr: etc}
+- {text: is, start: 2.16, end: 2.72, conf: 0.93, asr: is}
+- {text: where, start: 2.72, end: 2.9, conf: 0.963, asr: where}
+- {text: configuration, start: 2.9, end: 3.32, conf: 0.977, asr: configuration}
+- {text: is., start: 3.32, end: 3.96, conf: 0.892, asr: is.}
+- {text: It's, start: 4.56, end: 4.74, conf: 0.905, asr: It's}
+- {text: almost, start: 4.74, end: 4.92, conf: 0.995, asr: almost}
+- {text: always, start: 4.92, end: 5.52, conf: 0.997, asr: always}
+- {text: this, start: 5.52, end: 5.72, conf: 0.34, asr: this}
+- {text: plain, start: 5.72, end: 5.96, conf: 0.988, asr: plain}
+- {text: text, start: 5.96, end: 6.22, conf: 0.848, asr: text}
+- {text: files., start: 6.22, end: 6.68, conf: 0.898, asr: files.}
+- {text: Want, start: 7.46, end: 7.58, conf: 0.837, asr: Want}
+- {text: to, start: 7.58, end: 7.72, conf: 0.998, asr: to}
+- {text: know, start: 7.72, end: 7.84, conf: 0.999, asr: know}
+- {text: which, start: 7.84, end: 8.08, conf: 0.854, asr: which}
+- {text: distro, start: 8.08, end: 8.56, conf: 0.975, asr: distro}
+- {text: you're, start: 8.56, end: 8.8, conf: 0.969, asr: you're}
+- {text: 'on?', start: 8.8, end: 9.0, conf: 0.998, asr: 'on?'}
+- {text: Read, start: 9.64, end: 9.9, conf: 0.849, asr: Read}
+- {text: etc, start: 9.9, end: 10.38, conf: 0.691, asr: etc}
+- {text: OS, start: 10.38, end: 10.76, conf: 0.592, asr: OS}
+- {text: release., start: 10.76, end: 11.12, conf: 0.95, asr: release.}
+- {text: Looking, start: 11.82, end: 12.18, conf: 0.978, asr: Looking}
+- {text: for, start: 12.18, end: 12.38, conf: 0.999, asr: for}
+- {text: network, start: 12.38, end: 12.68, conf: 0.705, asr: network}
+- {text: 'settings,', start: 12.68, end: 13.18, conf: 0.958, asr: 'settings,'}
+- {text: user, start: 13.34, end: 13.5, conf: 0.961, asr: user}
+- {text: 'accounts,', start: 13.5, end: 13.94, conf: 0.955, asr: 'accounts,'}
+- {text: ssh, start: 14.16, end: 14.4, conf: 0.108, asr: ssh}
+- {text: services., start: 14.4, end: 15.02, conf: 0.928, asr: services.}
+- {text: It's, start: 15.58, end: 15.74, conf: 0.985, asr: It's}
+- {text: all, start: 15.74, end: 16.02, conf: 0.998, asr: all}
+- {text: in, start: 16.02, end: 16.32, conf: 0.99, asr: in}
+- {text: etc., start: 16.32, end: 16.72, conf: 0.934, asr: etc.}
+- {text: Edit, start: 17.22, end: 17.54, conf: 0.898, asr: Edit}
+- {text: the, start: 17.54, end: 17.72, conf: 0.995, asr: the}
+- {text: text, start: 17.72, end: 17.98, conf: 0.997, asr: text}
+- {text: here, start: 17.98, end: 18.28, conf: 0.995, asr: here}
+- {text: to, start: 18.28, end: 18.56, conf: 0.986, asr: to}
+- {text: change, start: 18.56, end: 18.86, conf: 0.998, asr: change}
+- {text: the, start: 18.86, end: 19.0, conf: 0.874, asr: the}
+- {text: services, start: 19.0, end: 19.36, conf: 0.914, asr: services}
+- {text: behavior., start: 19.36, end: 19.76, conf: 0.9, asr: behavior.}

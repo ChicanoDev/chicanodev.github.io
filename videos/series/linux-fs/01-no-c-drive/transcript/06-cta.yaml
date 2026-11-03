@@ -1,0 +1,23 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 06-cta
+audio_sha: 520c68028a73f283839c6e635bd0444cab0393c35794db0ccf26170d36fa2cd8
+words:
+- {text: Next, start: 0.0, end: 0.62, conf: 0.779, asr: Next}
+- {text: up, start: 0.62, end: 0.8, conf: 0.953, asr: up}
+- {text: in, start: 0.8, end: 0.92, conf: 0.895, asr: in}
+- {text: the, start: 0.92, end: 1.04, conf: 0.73, asr: the}
+- {text: series, start: 1.04, end: 1.34, conf: 0.961, asr: series}
+- {text: where, start: 1.34, end: 2.12, conf: 0.438, asr: where}
+- {text: your, start: 2.12, end: 2.26, conf: 0.96, asr: your}
+- {text: programs, start: 2.26, end: 2.82, conf: 0.974, asr: programs}
+- {text: actually, start: 2.82, end: 3.34, conf: 0.982, asr: actually}
+- {text: live, start: 3.34, end: 3.7, conf: 0.991, asr: live}
+- {text: 'on', start: 3.7, end: 3.96, conf: 0.98, asr: 'on'}
+- {text: a, start: 3.96, end: 4.1, conf: 0.695, asr: a}
+- {text: Linux, start: 4.1, end: 4.3, conf: 0.734, asr: Linux}
+- {text: 'system,', start: 4.3, end: 4.8, conf: 0.977, asr: 'system,'}
+- {text: follow, start: 5.36, end: 5.72, conf: 0.987, asr: follow}
+- {text: along, start: 5.72, end: 6.12, conf: 0.971, asr: along}
+- {text: at, start: 6.12, end: 6.36, conf: 0.949, asr: at}
+- {text: ChicanoDev, start: 6.36, end: 7.04, conf: 0.701, asr: ChicanoDev}
+- {text: .com., start: 7.04, end: 8.02, conf: 0.968, asr: .com.}

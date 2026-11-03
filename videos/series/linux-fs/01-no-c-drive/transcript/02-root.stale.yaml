@@ -1,0 +1,36 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 02-root
+audio_sha: d2d68281df9dfb23bb790f8d32b915fef2efe24d84d19127f42e5d448639d7cf
+words:
+- {text: That, start: 0.7, end: 1.38, conf: 0.679, asr: That}
+- {text: slash, start: 1.38, end: 1.7, conf: 0.874, asr: slash}
+- {text: is, start: 1.7, end: 2.02, conf: 0.985, asr: is}
+- {text: called, start: 2.02, end: 2.3, conf: 0.991, asr: called}
+- {text: 'root,', start: 2.3, end: 2.62, conf: 0.333, asr: 'root,'}
+- {text: the, start: 3.42, end: 3.6, conf: 0.91, asr: the}
+- {text: very, start: 3.6, end: 3.8, conf: 0.981, asr: very}
+- {text: top, start: 3.8, end: 4.08, conf: 0.999, asr: top}
+- {text: of, start: 4.08, end: 4.44, conf: 0.991, asr: of}
+- {text: the, start: 4.44, end: 4.58, conf: 0.992, asr: the}
+- {text: file, start: 4.58, end: 4.82, conf: 0.911, asr: file}
+- {text: tree., start: 4.82, end: 5.22, conf: 0.981, asr: tree.}
+- {text: Every, start: 6.14, end: 6.46, conf: 0.98, asr: Every}
+- {text: 'disk,', start: 6.46, end: 6.82, conf: 0.93, asr: 'disk,'}
+- {text: every, start: 7.16, end: 7.28, conf: 0.986, asr: every}
+- {text: 'folder,', start: 7.28, end: 7.72, conf: 0.998, asr: 'folder,'}
+- {text: every, start: 8.06, end: 8.28, conf: 0.985, asr: every}
+- {text: file, start: 8.28, end: 8.64, conf: 0.997, asr: file}
+- {text: hangs, start: 8.64, end: 8.98, conf: 0.911, asr: hangs}
+- {text: 'off', start: 8.98, end: 9.3, conf: 0.982, asr: 'off'}
+- {text: it., start: 9.3, end: 9.78, conf: 0.978, asr: it.}
+- {text: Run, start: 10.46, end: 10.72, conf: 0.93, asr: Run}
+- {text: ls, start: 10.72, end: 11.28, conf: 0.583, asr: ls}
+- {text: 'on', start: 11.28, end: 11.66, conf: 0.97, asr: 'on'}
+- {text: 'slash,', start: 11.66, end: 12.1, conf: 0.78, asr: 'slash,'}
+- {text: and, start: 12.62, end: 12.92, conf: 0.995, asr: and}
+- {text: you, start: 12.92, end: 13.06, conf: 0.999, asr: you}
+- {text: can, start: 13.06, end: 13.18, conf: 0.998, asr: can}
+- {text: see, start: 13.18, end: 13.52, conf: 0.999, asr: see}
+- {text: the, start: 13.52, end: 13.82, conf: 0.993, asr: the}
+- {text: main, start: 13.82, end: 14.14, conf: 0.998, asr: main}
+- {text: branches., start: 14.14, end: 14.66, conf: 0.995, asr: branches.}

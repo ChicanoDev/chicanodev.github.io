@@ -1,0 +1,45 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 05-etc
+audio_sha: 145f283129fa9893064e46098417897da6796170ee10b8deb26382e0202cfa34
+words:
+- {text: slash, start: 0.0, end: 0.5, conf: 0.042, asr: slash}
+- {text: Etsy, start: 0.5, end: 1.04, conf: 0.247, asr: Etsy}
+- {text: is, start: 1.04, end: 1.4, conf: 0.962, asr: is}
+- {text: where, start: 1.4, end: 1.64, conf: 0.929, asr: where}
+- {text: configuration, start: 1.64, end: 2.32, conf: 0.985, asr: configuration}
+- {text: lives, start: 2.32, end: 2.86, conf: 0.846, asr: lives}
+- {text: almost, start: 2.86, end: 4.0, conf: 0.4, asr: almost}
+- {text: always, start: 4.0, end: 4.74, conf: 0.995, asr: always}
+- {text: as, start: 4.74, end: 5.2, conf: 0.879, asr: as}
+- {text: plain, start: 5.2, end: 5.58, conf: 0.996, asr: plain}
+- {text: text, start: 5.58, end: 5.92, conf: 0.916, asr: text}
+- {text: files, start: 5.92, end: 6.5, conf: 0.987, asr: files}
+- {text: want, start: 6.5, end: 7.88, conf: 0.242, asr: want}
+- {text: to, start: 7.88, end: 8.06, conf: 0.998, asr: to}
+- {text: know, start: 8.06, end: 8.18, conf: 0.999, asr: know}
+- {text: what, start: 8.18, end: 8.36, conf: 0.824, asr: what}
+- {text: to, start: 8.36, end: 8.48, conf: 0.559, asr: to}
+- {text: distro, start: 8.48, end: 8.82, conf: 0.777, asr: distro}
+- {text: you, start: 8.82, end: 9.0, conf: 0.916, asr: you}
+- {text: are, start: 9.0, end: 9.14, conf: 0.833, asr: are}
+- {text: 'on', start: 9.14, end: 9.5, conf: 0.944, asr: 'on'}
+- {text: read, start: 9.5, end: 10.36, conf: 0.705, asr: read}
+- {text: Etsy, start: 10.36, end: 10.96, conf: 0.836, asr: Etsy}
+- {text: OS, start: 10.96, end: 11.44, conf: 0.752, asr: OS}
+- {text: release, start: 11.44, end: 12.06, conf: 0.991, asr: release}
+- {text: network, start: 12.06, end: 13.34, conf: 0.756, asr: network}
+- {text: settings, start: 13.34, end: 13.92, conf: 0.902, asr: settings}
+- {text: user, start: 13.92, end: 14.28, conf: 0.862, asr: user}
+- {text: accounts, start: 14.28, end: 14.84, conf: 0.978, asr: accounts}
+- {text: SSH, start: 14.84, end: 15.4, conf: 0.965, asr: SSH}
+- {text: services, start: 15.4, end: 16.74, conf: 0.974, asr: services}
+- {text: it's, start: 16.74, end: 17.38, conf: 0.952, asr: it's}
+- {text: all, start: 17.38, end: 17.66, conf: 0.998, asr: all}
+- {text: in, start: 17.66, end: 17.84, conf: 0.955, asr: in}
+- {text: Etsy, start: 17.84, end: 18.3, conf: 0.978, asr: Etsy}
+- {text: edit, start: 18.3, end: 19.4, conf: 0.893, asr: edit}
+- {text: the, start: 19.4, end: 19.6, conf: 0.996, asr: the}
+- {text: text, start: 19.6, end: 20.02, conf: 0.995, asr: text}
+- {text: change, start: 20.02, end: 20.82, conf: 0.963, asr: change}
+- {text: the, start: 20.82, end: 21.08, conf: 0.994, asr: the}
+- {text: behavior, start: 21.08, end: 21.46, conf: 0.991, asr: behavior}
