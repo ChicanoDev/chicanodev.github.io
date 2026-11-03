@@ -12,16 +12,16 @@ Linux has no C drive. Everything lives under one single slash.
 That slash is called root, the very top of the file tree. Every disk, every folder, every file hangs off it. Run ls on slash and you can see the main branches.
 
 ## [0:17-0:29] Home
-Slash home is where your stuff lives. Each user gets a folder in here: documents, downloads, your personal settings. Your home folder is also what the tilde shortcut means.
+Slash home is where your stuff lives. Each user gets a folder here. This is where you'll store documents, downloads, your personal settings, and the likes. Your home folder is also what the tilde shortcut means.
 
 ## [0:29-0:44] Root home
-Now, slash root. Careful, it is not the same as slash. This is the home folder of the root user, the all-powerful admin. Regular users get permission denied. You need sudo just to peek inside.
+Now onto slash root. Rmemeber that it is not the same as just slash. This is the home folder of the root user, the server's all-powerful admin. Regular users will get permission denied when trying to peek into this folder. You need sudo to see inside.
 
 ## [0:44-0:58] Etc
-Slash etc is where configuration lives, almost always as plain text files. Want to know which distro you are on? Read etc os-release. Network settings, user accounts, ssh, services, it is all in etc. Edit the text, change the behavior.
+Slash e-t-c , or "etsy", is where configuration lives, and its almost always as plain text files. Want to know which distro you are on? Read etc os-release. Looking for network settings, user accounts, ssh, services, it is all in etc. Edit the text here to change a sevice's behavior.
 
 ## [0:58-1:06] CTA
-Next up: where your programs actually live. Follow along at chicanodev dot com.
+Next up in this series: where your programs actually live on a Linux system. Follow along at chicanodev dot com.
 
 ## Post copy
 **YouTube Shorts title:** Linux has NO C: drive (here's what / is) #shorts

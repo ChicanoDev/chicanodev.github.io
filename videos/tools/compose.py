@@ -82,16 +82,40 @@ def brand_clip(src, dst, orient):
     return Path(dst)
 
 
-def master(raw, voice, dst, min_seconds=None):
+VERTICAL_TOP_SAFE = 200  # px of 1920 that Instagram's feed covers with the account name / audio line
+MARGIN_FILL = "0x1e1f29"  # matches `Set MarginFill` in common/vertical.settings.tape
+
+
+def master(raw, voice, dst, min_seconds=None, top_safe=0):
     """Clean master: silent terminal render + narration, 30 fps, no captions. The video is held on its
-    last frame if the narration (or `min_seconds`) runs longer than the render."""
+    last frame if the narration (or `min_seconds`) runs longer than the render. With `top_safe`, the render
+    is scaled to fit below that many pixels of empty band at the top of the same-size canvas."""
     raw_len = seconds(raw)
     total = max(raw_len, seconds(voice), min_seconds or 0)
     hold = total - raw_len
-    video = f"[0:v]fps={FPS},tpad=stop_mode=clone:stop_duration={hold:.3f},format=yuv420p[v]"
+    fit = ""
+    if top_safe:
+        stream = next(s for s in probe(raw)["streams"] if s["codec_type"] == "video")
+        w, h = stream["width"], stream["height"]
+        fit = (f"scale={w}:{h - top_safe}:force_original_aspect_ratio=decrease,"
+               f"pad={w}:{h}:(ow-iw)/2:{top_safe}:color={MARGIN_FILL},setsar=1,")
+    video = f"[0:v]fps={FPS},tpad=stop_mode=clone:stop_duration={hold:.3f},{fit}format=yuv420p[v]"
     audio = f"[1:a]aformat=sample_rates={RATE}:channel_layouts=stereo,apad[a]"
     run_ffmpeg("-i", raw, "-i", voice, "-filter_complex", f"{video};{audio}", "-map", "[v]", "-map", "[a]",
                "-t", f"{total:.3f}", *ENCODE, dst)
+    return Path(dst)
+
+
+def overlay_logo(src, logo, dst, orient, seconds=1.5):
+    """Fade the title logo in over the first `seconds` of the video, centred. Length, audio and timing are unchanged."""
+    w, h = CANVAS[orient]
+    side = round(min(w, h) * 0.6)
+    fade_out = 0.4
+    graph = (f"[1:v]scale={side}:{side},format=yuva420p,fade=t=in:st=0:d=0.25:alpha=1,"
+             f"fade=t=out:st={seconds - fade_out:.3f}:d={fade_out}:alpha=1[logo];"
+             f"[0:v][logo]overlay=(W-w)/2:(H-h)/2:eof_action=pass:format=auto,format=yuv420p[v]")
+    run_ffmpeg("-i", src, "-loop", "1", "-t", f"{seconds:.3f}", "-i", logo, "-filter_complex", graph,
+               "-map", "[v]", "-map", "0:a", *ENCODE, dst)
     return Path(dst)
 
 

@@ -1,0 +1,39 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 03-home
+audio_sha: 5de65cf3abaa2e460726d8f072e302da42e62fad7898e656321f06368d76b280
+words:
+- {text: Slash home, start: 0.0, end: 0.56, conf: 0.032, asr: home}
+- {text: is, start: 0.56, end: 0.8, conf: 0.908, asr: is}
+- {text: where, start: 0.8, end: 0.94, conf: 0.972, asr: where}
+- {text: your, start: 0.94, end: 1.12, conf: 0.971, asr: your}
+- {text: stuff, start: 1.12, end: 1.4, conf: 0.995, asr: stuff}
+- {text: lives., start: 1.4, end: 1.78, conf: 0.746, asr: lives}
+- {text: Each, start: 1.78, end: 2.54, conf: 0.487, asr: each}
+- {text: user, start: 2.54, end: 2.8, conf: 0.984, asr: user}
+- {text: gets, start: 2.8, end: 3.02, conf: 0.901, asr: gets}
+- {text: a, start: 3.02, end: 3.14, conf: 0.985, asr: a}
+- {text: folder, start: 3.14, end: 3.44, conf: 0.996, asr: folder}
+- {text: here., start: 3.44, end: 3.84, conf: 0.989, asr: here}
+- {text: This, start: 3.84, end: 4.66, conf: 0.815, asr: this}
+- {text: is, start: 4.66, end: 4.96, conf: 0.995, asr: is}
+- {text: where, start: 4.96, end: 5.18, conf: 0.997, asr: where}
+- {text: you'll, start: 5.18, end: 5.44, conf: 0.965, asr: you'll}
+- {text: store, start: 5.44, end: 5.64, conf: 0.991, asr: store}
+- {text: "documents,", start: 5.64, end: 6.16, conf: 0.992, asr: documents}
+- {text: "downloads,", start: 6.16, end: 6.72, conf: 0.498, asr: download}
+- {text: your, start: 6.72, end: 7.0, conf: 0.962, asr: your}
+- {text: personal, start: 7.0, end: 7.38, conf: 0.993, asr: personal}
+- {text: "settings,", start: 7.38, end: 7.8, conf: 0.716, asr: setting}
+- {text: and, start: 7.8, end: 8.14, conf: 0.867, asr: and}
+- {text: the, start: 8.14, end: 8.3, conf: 0.946, asr: the}
+- {text: likes., start: 8.3, end: 8.62, conf: 0.87, asr: likes}
+- {text: Your, start: 8.62, end: 9.54, conf: 0.8, asr: your}
+- {text: home, start: 9.54, end: 9.76, conf: 0.978, asr: home}
+- {text: folder, start: 9.76, end: 10.08, conf: 0.994, asr: folder}
+- {text: is, start: 10.08, end: 10.5, conf: 0.911, asr: is}
+- {text: also, start: 10.5, end: 10.68, conf: 0.998, asr: also}
+- {text: what, start: 10.68, end: 10.96, conf: 0.753, asr: what}
+- {text: the, start: 10.96, end: 11.16, conf: 0.954, asr: the}
+- {text: tilde, start: 11.16, end: 11.6, conf: 0.785, asr: tilde}
+- {text: shortcut, start: 11.6, end: 12.1, conf: 0.993, asr: shortcut}
+- {text: means., start: 12.1, end: 12.56, conf: 0.994, asr: means}

@@ -1,0 +1,15 @@
+# Edit a word's `text` to correct it. Edits are kept until the recording changes.
+segment: 01-hook
+audio_sha: a0843b85669ff82cec712dc17ea4e118543024914b677c00622cbbbfd5b449d2
+words:
+- {text: Linux, start: 0.88, end: 1.68, conf: 0.8, asr: Linux}
+- {text: has, start: 1.68, end: 2.08, conf: 0.978, asr: has}
+- {text: 'no', start: 2.08, end: 2.38, conf: 0.994, asr: 'no'}
+- {text: C, start: 2.38, end: 2.7, conf: 0.83, asr: C}
+- {text: drive., start: 2.7, end: 3.08, conf: 0.843, asr: drive.}
+- {text: Everything, start: 4.3, end: 4.6, conf: 0.99, asr: Everything}
+- {text: lives, start: 4.6, end: 5.0, conf: 0.987, asr: lives}
+- {text: under, start: 5.0, end: 5.48, conf: 0.997, asr: under}
+- {text: one, start: 5.48, end: 5.82, conf: 0.979, asr: one}
+- {text: single, start: 5.82, end: 6.1, conf: 0.98, asr: single}
+- {text: slash., start: 6.1, end: 6.52, conf: 0.98, asr: slash.}

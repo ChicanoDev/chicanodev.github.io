@@ -24,7 +24,7 @@ def ink_series(video, fps=25):
     return (np.abs(frames.astype(np.int16) - int(background)) > INK_DELTA).mean(axis=1).tolist()
 
 
-def find_clears(series, fps, expected, window=1.5, min_drop=0.003):
+def find_clears(series, fps, expected, window=3.0, min_drop=0.003):
     """For each expected clear time, the time of the biggest single-frame ink drop within ±window (else None)."""
     drops = [series[i - 1] - series[i] for i in range(1, len(series))]
     found = []
@@ -32,6 +32,20 @@ def find_clears(series, fps, expected, window=1.5, min_drop=0.003):
         lo, hi = max(int((t - window) * fps), 0), min(int((t + window) * fps), len(drops))
         best = max(range(lo, hi), key=lambda i: drops[i], default=None)
         found.append((best + 1) / fps if best is not None and drops[best] >= min_drop else None)
+    return found
+
+
+def find_clears_chained(series, fps, expected, window=3.0, min_drop=0.003):
+    """Like find_clears, but each search is moved by how far off the last clear that was found turned out to be.
+
+    The render runs shorter or longer than the tape estimate, and the gap grows beat by beat; a fixed guess
+    soon falls outside the window. A beat that is not found does not change the shift."""
+    found, shift = [], 0.0
+    for t in expected:
+        (hit,) = find_clears(series, fps, [t + shift], window, min_drop)
+        found.append(hit)
+        if hit is not None:
+            shift = hit - t
     return found
 
 
@@ -86,10 +100,18 @@ def drift_report(measured, targets, total, beat_tol=0.3, total_tol=0.5, titles=N
     return DriftReport(beats, total, problems)
 
 
-def corrected_periods(periods, measured, total_end):
-    """Ask for each beat's period minus the error seen in the last render (None = unmeasured, left alone)."""
+CORRECTION_GAIN = 0.5  # VHS renders jitter by a few tenths of a second; correcting all of it each pass chases the noise
+
+
+def corrected_periods(periods, measured, total_end, targets=None):
+    """Ask for each beat's period minus part of how far its last render missed its target.
+
+    `targets` are the lengths the narration needs (default: `periods`, right for the first pass). Later passes
+    must judge against them, not against the corrected periods, or a steady render bias gets corrected twice.
+    None = unmeasured, left alone."""
+    targets = periods if targets is None else targets
     ends = list(measured[1:]) + [total_end]
     out = []
-    for period, start, end in zip(periods, measured, ends):
-        out.append(period if start is None or end is None else period - ((end - start) - period))
+    for period, target, start, end in zip(periods, targets, measured, ends):
+        out.append(period if start is None or end is None else period - CORRECTION_GAIN * ((end - start) - target))
     return out
