@@ -380,7 +380,9 @@ class TestMainRejectsUnknownEpisodes:
         assert "no-such-episode" in capsys.readouterr().out
 
     def test_flags_are_not_treated_as_episode_names(self, capsys):
-        assert vidkit.main(["pace", "linux-fs/01-no-c-drive"]) == 0
+        # Exit 0 or 1 both mean the episode was accepted (1 = a section reads too fast). 2 means rejected.
+        assert vidkit.main(["pace", "linux-fs/01-no-c-drive"]) in (0, 1)
+        assert "unknown episode" not in capsys.readouterr().out
 
 
 class TestChapterLines:
