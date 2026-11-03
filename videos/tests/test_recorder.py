@@ -281,6 +281,12 @@ class TestStateRecovery:
         assert store.pending(SEG) is None
         assert t1.exists()
 
+    def test_approving_an_older_take_retires_the_newer_ones(self, store):
+        t1, t2 = make_take(store), make_take(store, freq=700)
+        store.approve(SEG, t1)
+        assert store.pending(SEG) is None
+        assert t2.exists()  # kept on disk, just not offered again
+
     def test_newer_take_after_approval_is_pending(self, store):
         store.approve(SEG, make_take(store))
         t2 = make_take(store, freq=700)

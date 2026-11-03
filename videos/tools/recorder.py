@@ -290,6 +290,8 @@ class TakeStore:
         entry = self._entry(seg)
         entry["approved"] = take.name
         entry["approved_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        rejected = entry.setdefault("rejected", [])
+        rejected += [t.name for t in self.takes(seg) if take_number(t) > take_number(take) and t.name not in rejected]
         self._save()
 
     def _archive(self, seg, olds):
