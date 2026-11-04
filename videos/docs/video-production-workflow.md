@@ -46,6 +46,9 @@ Enter  start recording  ->  read the script  ->  Enter  stop  ->  (take plays)  
 | script | `Enter` record, `s` skip for now, `q` save and quit |
 | after a take | `Enter` approve, `p` play again, `r` record again, `b`/`n` earlier/later take, `q` save and quit |
 | start screen | `Enter` continue where you left off, `l` pick any segment, `q` quit |
+| script panel | `Up`/`Down`/`PgUp`/`PgDn` scroll a script too long for the window |
+
+The current segment's script stays pinned at the top of the screen while you record, review, play back, retry, switch takes and resume, so you never need to scroll or open `voiceover.md`. It uses the terminal's alternate screen (like `vim`), so nothing lands in scrollback, and it redraws when you resize the window or tmux pane. On a pipe or `TERM=dumb` it falls back to plain line-by-line output that prints the script with every screen.
 
 - **Quit any time.** Run the same command tomorrow and it resumes at the first segment that is not approved. A take you recorded but did not approve is offered first, so a good recording is never lost.
 - **Approved** means `narration/<segment>.wav` exists (48 kHz, mono, 16-bit). That is the file `check-audio`, `transcribe` and `build` read, so there is no extra step.

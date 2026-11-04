@@ -1156,7 +1156,7 @@ def _cmd_record(argv):
     except recorder.RecorderError as err:
         print(f"!! {err}")
         return 1
-    session = studio.Session(segments, store, backend, studio.TerminalUI(), title=title, episode=f"{series}/{slug}",
+    session = studio.Session(segments, store, backend, studio.make_ui(), title=title, episode=f"{series}/{slug}",
                              device=device, autoplay="--no-autoplay" not in argv, only=_flag(argv, "--segment"))
     return session.run()
 

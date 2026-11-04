@@ -45,7 +45,7 @@ def interactive(monkeypatch):
     def start(keys, **kw):
         holder["ui"] = FakeUI(keys, **kw)
         monkeypatch.setattr(vidkit, "_is_interactive", lambda: True)
-        monkeypatch.setattr(studio, "TerminalUI", lambda: holder["ui"])
+        monkeypatch.setattr(studio, "make_ui", lambda *a, **k: holder["ui"])
         return holder["ui"]
     return start
 

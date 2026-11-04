@@ -155,6 +155,58 @@ class TestResumeAndQuit:
         assert store.status("01-hook") == "pending"
 
 
+class TestScriptStaysPinned:
+    """Every screen the session shows is told which segment's script to keep on screen."""
+
+    @staticmethod
+    def shown(ui):
+        """(event, segment id, total) for every screen that must carry the script."""
+        out = []
+        for name, p in ui.events:
+            if name in ("segment", "recording", "review", "focus"):
+                out.append((name, p["segment"].id, p["total"]))
+        return out
+
+    def test_fresh_recording_carries_the_script(self, folder):
+        _, ui, _, _ = run(folder, [ENTER, ENTER, ENTER, "q"])
+        rec = ui.named("recording")[0]
+        assert rec["segment"].text == narration.episode_segments(folder)[0].text
+        assert rec["total"] == 3
+
+    def test_resumed_pending_take_focuses_the_script_before_review(self, folder):
+        run(folder, [ENTER, ENTER, ENTER, "q"])
+        _, ui, backend, _ = run(folder, [ENTER, "q"])
+        names = [n for n, _ in ui.events if n in ("focus", "review")]
+        assert names[:2] == ["focus", "review"]
+        assert ui.named("focus")[0]["segment"].id == "01-hook" and backend.started == 0
+
+    def test_rerecording_carries_the_script(self, folder):
+        _, ui, _, _ = run(folder, [ENTER, ENTER, ENTER, "r", ENTER, "q"])
+        recs = ui.named("recording")
+        assert len(recs) == 2 and all(r["segment"].id == "01-hook" and r["total"] == 3 for r in recs)
+
+    def test_review_and_playback_carry_the_script(self, folder):
+        _, ui, _, _ = run(folder, [ENTER, ENTER, ENTER, "p", "q"])
+        reviews = ui.named("review")
+        assert len(reviews) >= 2
+        assert all(r["segment"].id == "01-hook" and r["total"] == 3 for r in reviews)
+
+    def test_switching_to_an_earlier_take_carries_the_script(self, folder):
+        _, ui, _, _ = run(folder, [ENTER, ENTER, ENTER, "r", ENTER, "b", "q"],
+                          recordings=[tone(2, freq=300), tone(2, freq=900)])
+        last = ui.named("review")[-1]
+        assert last["position"] == 1 and last["segment"].id == "01-hook" and last["total"] == 3
+
+    def test_same_segment_five_times_play_each_then_approve_the_third(self, folder):
+        keys = [ENTER, ENTER, ENTER, "p"] + ["r", ENTER, "p"] * 4 + ["b", "b", ENTER, "q"]
+        _, ui, backend, store = run(folder, keys, recordings=[tone(2, freq=200 + 100 * i) for i in range(5)])
+        assert len(store.takes("01-hook")) == 5
+        assert store.approved_take("01-hook") == "01-hook.take3.wav"
+        pinned = [s for s in self.shown(ui) if s[0] in ("recording", "review")]
+        assert len(pinned) >= 15 and {(i, t) for _, i, t in pinned} == {("01-hook", 3)}
+        assert {p.name for p in backend.played} == {f"01-hook.take{n}.wav" for n in range(1, 6)}
+
+
 class TestSkipAndOrder:
     def test_skip_moves_on_and_returns_to_skipped_at_the_end(self, folder):
         keys = [ENTER, "s"] + TAKE * 2 + [ENTER] + TAKE  # skip 01; do 02, 03; overview; do 01

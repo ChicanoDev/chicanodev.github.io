@@ -1,7 +1,8 @@
 """Interactive narration studio: the Session state machine and its terminal UI.
 
 `Session` holds all the decisions (resume, record, review, retake, skip, quit) and talks to a `ui` and an
-audio `backend` through small interfaces, so tests drive it with fakes. `TerminalUI` is the real screen.
+audio `backend` through small interfaces, so tests drive it with fakes. `live_ui.LiveUI` is the real screen (script pinned on top,
+full-screen); `TerminalUI` is the plain line-by-line fallback for pipes and dumb terminals. `make_ui()` picks.
 """
 import os
 import select
@@ -61,8 +62,16 @@ class Session:
                 return self._wrap_up()
             return self._loop()
         except (KeyboardInterrupt, EOFError):
+            self._close_ui()  # leave the full-screen view first so this message stays in the terminal
             self.ui.note("Stopped. Everything recorded so far is saved. Run the same command to resume.", "info")
             return 0
+        finally:
+            self._close_ui()
+
+    def _close_ui(self):
+        close = getattr(self.ui, "close", None)
+        if close:
+            close()
 
     def _wrap_up(self):
         if not self._incomplete():
@@ -110,6 +119,7 @@ class Session:
                                    "(The approved one stays until you approve the replacement.)"):
                 return "declined"
         if pending:
+            self.ui.focus({"segment": seg, "total": len(self.segments)})  # script first, then the take's options
             self.ui.note(f"Found an unreviewed take from earlier: {pending.name}. Review it before recording again.")
             return self._review(seg, pending)
         while True:
@@ -133,7 +143,7 @@ class Session:
             return None
         interrupted = None
         try:
-            self.ui.record_wait(capture)
+            self.ui.record_wait(capture, {"segment": seg, "total": len(self.segments)})
         except (KeyboardInterrupt, EOFError) as err:
             interrupted = err
         except recorder.RecorderError as err:
@@ -176,7 +186,8 @@ class Session:
         while True:
             take = takes[idx]
             stats, problems, can_approve = self._analyze(take)
-            self.ui.review({"segment": seg, "take": take, "position": idx + 1, "count": len(takes),
+            self.ui.review({"segment": seg, "total": len(self.segments), "take": take,
+                            "position": idx + 1, "count": len(takes),
                             "duration": stats.duration if stats else 0.0, "problems": problems,
                             "can_approve": can_approve, "is_approved": self.store.approved_take(seg.id) == take.name})
             if play_now:
@@ -294,11 +305,18 @@ class TerminalUI:
         self.say(f"  {cli_ui.paint('[l]', cli_ui.PURPLE)}     List and select a segment")
         self.say(f"  {cli_ui.paint('[q]', cli_ui.PURPLE)}     Quit")
 
-    def segment(self, info):
+    def _script(self, info):
+        """The narration for this segment, boxed. Printed on every screen so it is never out of view."""
         seg = info["segment"]
         title = f"SEGMENT {seg.index:02} / {info['total']:02} - {seg.title.upper()}"
         self.say()
         self.say(cli_ui.panel([""] + seg.text.splitlines() + [""], title=title))
+
+    def focus(self, info):
+        pass  # the plain screen prints the script with each screen instead
+
+    def segment(self, info):
+        self._script(info)
         self.say()
         if info["status"] == "approved":
             self.say("  (Already approved. Approving a new take replaces it; the old audio is archived.)")
@@ -311,6 +329,7 @@ class TerminalUI:
         lines = ["", f"Segment: {seg.id}", f"Take:    {take.name.split('.')[-2]} ({info['position']} of {info['count']})"
                  + ("  [approved]" if info["is_approved"] else ""),
                  f"Length:  {info['duration']:.1f} seconds", ""]
+        self._script(info)
         self.say()
         self.say(cli_ui.panel(lines, title="TAKE RECORDED", rgb=cli_ui.CYAN))
         for problem in info["problems"]:
@@ -388,13 +407,15 @@ class TerminalUI:
         import termios
         termios.tcflush(self.fd, termios.TCIFLUSH)
 
-    def record_wait(self, capture):
+    def record_wait(self, capture, info=None):
         import termios
         import tty
         old = termios.tcgetattr(self.fd)
+        if info:
+            self._script(info)
         self.say()
         self.say(cli_ui.paint("  ● RECORDING" if not cli_ui.is_dumb() else "  * RECORDING", cli_ui.RED, bold=True))
-        self.say("\n  Read naturally. Take your time.\n")
+        self.say()
         self.say(f"  {cli_ui.paint('[Enter]', cli_ui.PURPLE)} Stop recording\n")
         try:
             tty.setcbreak(self.fd, termios.TCSANOW)  # NOW: do not drop a key typed early
@@ -409,3 +430,17 @@ class TerminalUI:
         finally:
             termios.tcsetattr(self.fd, termios.TCSADRAIN, old)
             print(file=self.out, flush=True)
+
+
+def make_ui(out=None):
+    """The persistent full-screen recorder on a real terminal; the plain line-by-line screen otherwise
+    (pipes, TERM=dumb, or rich not installed)."""
+    out = out or sys.stdout
+    smart = sys.stdin.isatty() and out.isatty() and os.environ.get("TERM", "") not in ("", "dumb")
+    if smart:
+        try:
+            import live_ui
+            return live_ui.LiveUI(out)
+        except ImportError:
+            pass
+    return TerminalUI(out)

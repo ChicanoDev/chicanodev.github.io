@@ -83,8 +83,11 @@ class FakeUI:
     def segment(self, info):
         self.log("segment", info)
 
-    def record_wait(self, capture):
-        self.log("recording")
+    def focus(self, info):
+        self.log("focus", info)
+
+    def record_wait(self, capture, info=None):
+        self.log("recording", info)
         if self.stop_interrupt:
             raise self.stop_interrupt
         self.key()  # the Enter that stops recording
