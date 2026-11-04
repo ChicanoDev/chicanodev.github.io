@@ -57,7 +57,12 @@ python3 tools/vidkit.py                                      # all commands, gro
 python3 tools/vidkit.py record linux-fs/01-no-c-drive        # interactive recorder; quit and resume any time
 python3 tools/vidkit.py build linux-fs/01-no-c-drive         # transcribe, sync, caption, brand
 python3 tools/vidkit.py approve linux-fs/01-no-c-drive       # after watching it on your phone
+python3 tools/vidkit.py backlog                              # approved exports still to upload, per platform
+python3 tools/vidkit.py publish linux-fs/01-no-c-drive --platform youtube --url 'https://…'  # after uploading by hand
+python3 tools/vidkit.py status linux-fs                      # publication history and series progress
 ```
+
+`publish` only records an upload you did yourself. See [step 10 of the workflow](docs/video-production-workflow.md#10-record-the-upload-track-progress).
 
 **Legacy:** record one take against the finished silent video and run `mux`. The `.srt` files then come from the script, so re-time them if your read differs much. Both flows keep working.
 

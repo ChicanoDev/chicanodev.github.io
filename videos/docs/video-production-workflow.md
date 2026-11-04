@@ -5,7 +5,7 @@ You write the script, record a few sentences at a time, and one command builds a
 All commands run from `videos/`, written as `python3 tools/vidkit.py ...`. Do the one-time [setup](../README.md#setup-for-the-narration-pipeline) first; after that the tool switches to the project's `.venv` by itself, so plain `python3` works. If the setup is missing it tells you the exact command to run.
 
 ```text
-script  ->  record (vidkit record)  ->  check-audio  ->  build  ->  review on phone  ->  approve  ->  publish by hand
+script  ->  record (vidkit record)  ->  check-audio  ->  build  ->  review on phone  ->  approve  ->  upload by hand  ->  publish (record it)  ->  status / backlog
 ```
 
 ## 1. Script
@@ -179,7 +179,7 @@ Watch it on your phone, with sound. The command prints the checklist (voice clea
 
 ```sh
 python3 tools/vidkit.py approve linux-fs/01-no-c-drive
-python3 tools/vidkit.py backlog                  # approved and ready to publish
+python3 tools/vidkit.py backlog                  # approved exports still to upload, per platform
 ```
 
 Approval is voided if the content changes (new take, edited transcript, new tape) or if the exported file is replaced. Rebuild, review, approve again. `approve` refuses if the checks failed.
@@ -195,6 +195,32 @@ Builds every fully recorded episode, **skips** the unrecorded ones (and says whi
 ## 9. Publish (by hand)
 
 Upload from `backlog` using YouTube Studio / Meta. Titles, captions and hashtags are in `out/final/<id>.meta.md`, taken from the `## Post copy` block. Upload the `.srt` as the caption track if you want YouTube to use it.
+
+## 10. Record the upload, track progress
+
+```
+build  ->  review  ->  approve  ->  upload manually  ->  publish  ->  status / backlog
+```
+
+`publish` **records** an upload you already did. It never uploads, schedules or calls any platform API.
+
+```sh
+python3 tools/vidkit.py publish linux-fs/02-where-programs-live --platform youtube --url 'https://www.youtube.com/shorts/ID'
+python3 tools/vidkit.py publish linux-fs/02-where-programs-live --platform instagram          # URL is optional
+python3 tools/vidkit.py publish linux-fs/02-where-programs-live --platform youtube --format horizontal \
+  --at '2026-11-04T14:00:00-06:00' --by 'Dave Vigil'
+python3 tools/vidkit.py backlog --platform youtube      # what still needs uploading
+python3 tools/vidkit.py status linux-fs                 # history and series progress
+```
+
+- **One episode, one destination per call.** `--platform` is required. `--format` defaults to `vertical`, and `both` is refused. Series names are refused, so nothing is bulk-marked.
+- **Destinations are separate.** A YouTube record removes that format from YouTube's backlog only. Instagram stays pending until you record it.
+- **Records are tied to the exact file bytes** (SHA-256) and are append-only. Re-running `publish` for the same file is a no-op and keeps the original time, URL and name. If you pass a different `--url`, `--at` or `--by` for an existing record, it is refused and nothing changes. Adding a URL later counts as an edit too, and this release does not edit records.
+- **`--at`** needs a timezone (`Z` or `-06:00`). It is stored in UTC and must not be in the future. If you leave it out, it defaults to now.
+- **Rebuilds keep history.** A changed export voids approval as before. The old publication stays in `status`, labelled "changed since publish". After you approve the new export, it shows up in `backlog` again as a new revision. If only the horizontal file changes, the already-published vertical file is not re-queued. If the bytes are identical but the content key is new, the export still counts as published.
+- **`status`** shows, per series, `Ever published X/N` (any upload, ever) and `Current exports published Y/N` (the current local file matches an upload). N counts every registered episode, including ones not built yet. These labels compare local files only and do not check whether a post is still live.
+- **Compiled long videos are not tracked yet.** Publishing every episode does not mark the compilation published.
+- History lives in `out/final/<id>.status.json`, which is written atomically. If that file is corrupt, vidkit names it and stops. It never overwrites it.
 
 ## Files you edit vs. files that are generated
 

@@ -4,15 +4,24 @@ A successful build is only 'built'. A human runs `approve` to move it to 'approv
 content (new build inputs) or to the exported files voids the approval.
 """
 import json
-from dataclasses import asdict, dataclass, field
+import os
+import tempfile
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from pathlib import Path
 
 import narration
 
+PLATFORMS = ("youtube", "instagram")
+PUBLISH_FORMATS = ("vertical", "horizontal")
+
 
 class NotApprovable(Exception):
     """The build is not in a state that can be approved; the message says what to do."""
+
+
+class CorruptStatus(Exception):
+    """A status file cannot be read. It is never overwritten automatically, because it holds publication history."""
 
 
 @dataclass
@@ -25,6 +34,8 @@ class Status:
     built_at: str = ""
     approved_at: str = None
     approved_by: str = None
+    # Append-only manual publication records (see publication.py). Independent of the approval state above.
+    publications: list = field(default_factory=list)
 
 
 def _path(root, eid):
@@ -42,15 +53,81 @@ def _rel(root, path):
         return str(path)
 
 
+def _aware_iso(value):
+    if not isinstance(value, str):
+        return False
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).tzinfo is not None and "T" in value
+    except ValueError:
+        return False
+
+
+_TEXT = ("published_by", "content_key", "artifact_path", "artifact_sha256")
+_OPTIONAL_TEXT = ("url", "approved_at", "approved_by")
+
+
+def _publication_problem(entry):
+    if not isinstance(entry, dict):
+        return "a publication record is not an object"
+    required = {"platform", "format", "published_at", "recorded_at", *_TEXT, *_OPTIONAL_TEXT}
+    missing = sorted(required - set(entry))
+    if missing:
+        return f"a publication record is missing {', '.join(missing)}"
+    if entry["platform"] not in PLATFORMS:
+        return f"unknown platform {entry['platform']!r}"
+    if entry["format"] not in PUBLISH_FORMATS:
+        return f"unknown format {entry['format']!r}"
+    for key in ("published_at", "recorded_at"):
+        if not _aware_iso(entry[key]):
+            return f"{key} {entry[key]!r} is not an ISO timestamp with a timezone"
+    for key in _TEXT:
+        if not isinstance(entry[key], str) or not entry[key]:
+            return f"{key} must be non-empty text"
+    for key in _OPTIONAL_TEXT:
+        if entry[key] is not None and not isinstance(entry[key], str):
+            return f"{key} must be text or null"
+    return None
+
+
 def _load(root, eid):
     p = _path(root, eid)
-    return Status(**json.loads(p.read_text())) if p.exists() else None
+    if not p.exists():
+        return None
+    fix = f"Fix or restore {p} by hand (e.g. from git or a backup); vidkit will not overwrite it."
+    try:
+        data = json.loads(p.read_text())
+    except (ValueError, OSError) as err:
+        raise CorruptStatus(f"{p}: unreadable status file ({err}). {fix}") from err
+    if not isinstance(data, dict):
+        raise CorruptStatus(f"{p}: status file is not a JSON object. {fix}")
+    unknown = sorted(set(data) - {f.name for f in fields(Status)})
+    if unknown:
+        raise CorruptStatus(f"{p}: unknown fields {', '.join(unknown)}. {fix}")
+    pubs = data.get("publications", [])
+    if not isinstance(pubs, list):
+        raise CorruptStatus(f"{p}: publications must be a list. {fix}")
+    for i, entry in enumerate(pubs):
+        problem = _publication_problem(entry)
+        if problem:
+            raise CorruptStatus(f"{p}: publication #{i + 1}: {problem}. {fix}")
+    try:
+        return Status(**data)
+    except TypeError as err:
+        raise CorruptStatus(f"{p}: {err}. {fix}") from err
 
 
 def _save(root, status):
+    """Write atomically: a crash mid-write must never truncate the only copy of publication history."""
     p = _path(root, status.eid)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(asdict(status), indent=2) + "\n")
+    fd, tmp = tempfile.mkstemp(dir=p.parent, prefix=f".{p.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(json.dumps(asdict(status), indent=2) + "\n")
+        os.replace(tmp, p)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
     return status
 
 
@@ -76,7 +153,8 @@ def record_build(root, eid, content_key, files, qa_problems, now=None):
         state = "failed-qa"
     else:
         state = "approved" if unchanged else "built"
-    status = Status(eid, state, content_key, recorded, list(qa_problems), now or _now())
+    status = Status(eid, state, content_key, recorded, list(qa_problems), now or _now(),
+                    publications=list(previous.publications) if previous else [])
     if state == "approved":
         status.approved_at, status.approved_by = previous.approved_at, previous.approved_by
     return _save(root, status)
