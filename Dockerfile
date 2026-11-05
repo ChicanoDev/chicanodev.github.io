@@ -15,18 +15,21 @@ COPY astro.config.ts tsconfig.json ./
 COPY public ./public
 COPY src ./src
 
-# Everything in the site that depends on "what time is it" (which posts are
-# published yet) reads BUILD_NOW. Passing it in, instead of calling the clock
-# inside the build, makes a build repeatable and testable.
-ARG BUILD_NOW=""
-ENV BUILD_NOW=${BUILD_NOW}
-RUN npm run build
-
-# Build provenance, served at /version.json. Written after the build so a new
-# commit hash does not invalidate the (slow) build layer above.
 ARG REF=dev
 ARG COMMIT=unknown
-RUN printf '{"ref":"%s","commit":"%s","buildNow":"%s"}\n' "$REF" "$COMMIT" "$BUILD_NOW" > dist/version.json \
+# Which posts are published is decided by BUILD_NOW (see src/lib/publishing.ts).
+# CI passes it explicitly so a build is repeatable; with no value the build
+# stamps the current time once, so /version.json always says what was used.
+ARG BUILD_NOW=""
+RUN export BUILD_NOW="${BUILD_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" \
+ && npm run build \
+ && node -e ' \
+      const fs = require("node:fs"); \
+      const published = fs.readdirSync("dist/posts", { withFileTypes: true }) \
+        .filter((e) => e.isDirectory()).map((e) => e.name).sort(); \
+      const { REF, COMMIT, BUILD_NOW } = process.env; \
+      fs.writeFileSync("dist/version.json", JSON.stringify({ ref: REF, commit: COMMIT, buildNow: BUILD_NOW, published }) + "\n"); \
+    ' \
  && rm -f dist/CNAME dist/.nojekyll
 
 # ---- Runtime stage ---------------------------------------------------------
