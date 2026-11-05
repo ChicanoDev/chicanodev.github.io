@@ -1,0 +1,12 @@
+# Allowlist: nothing enters the build context unless it is named here.
+# This keeps .git, .env files, node_modules, the video tooling, and local
+# build output out of the image and out of the layer cache key.
+*
+
+!package.json
+!package-lock.json
+!astro.config.ts
+!tsconfig.json
+!public
+!src
+!deploy/nginx
