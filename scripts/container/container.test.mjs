@@ -109,7 +109,12 @@ test('/version.json reports what was built', async () => {
   const res = await get('/version.json');
   assert.equal(res.status, 200);
   const body = await res.json();
-  for (const key of ['ref', 'commit', 'buildNow']) assert.ok(key in body, `version.json missing ${key}`);
+  for (const key of ['ref', 'commit', 'buildNow', 'published']) assert.ok(key in body, `version.json missing ${key}`);
+  assert.ok(!Number.isNaN(Date.parse(body.buildNow)), `buildNow is not a date: ${body.buildNow}`);
+  // `published` is read from the built site, so it is what visitors can see.
+  assert.ok(body.published.includes('welcome'));
+  assert.ok(!body.published.includes('scheduled-preview'), 'future-dated post is live');
+  assert.ok(!body.published.includes('draft-preview'), 'draft is live');
 });
 
 test('runs as an unprivileged user on a read-only root', () => {

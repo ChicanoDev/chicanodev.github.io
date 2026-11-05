@@ -157,6 +157,22 @@ test('draft posts stay out of production output', () => {
   }
 });
 
+test('future-dated posts stay out of every public surface', () => {
+  const source = fs.readFileSync('src/content/posts/scheduled-preview.md', 'utf8');
+  assert.match(source, /^draft:\s*false\s*$/m, 'fixture must NOT be a draft, or this proves nothing');
+  assert.match(source, /^date:\s*2099-/m);
+
+  for (const rel of ['posts/scheduled-preview/index.html', 'categories/future-fixture/index.html', 'tags/future-fixture/index.html']) {
+    assert.equal(fs.existsSync(path.join(dist, rel)), false, `${rel} was built`);
+  }
+
+  // Every text file in the build: pages, feeds, sitemaps AND client-side JS/JSON.
+  const leaks = walk(dist)
+    .filter((file) => /\.(html|xml|txt|js|mjs|json|css|svg)$/.test(file))
+    .filter((file) => /__CHICANODEV_FUTURE_FIXTURE__|SCHEDULED ONLY|scheduled-preview|future-fixture/.test(fs.readFileSync(file, 'utf8')));
+  assert.deepEqual(leaks.map((f) => path.relative(dist, f)), []);
+});
+
 test('internal links resolve', () => {
   const htmlFiles = walk(dist).filter((file) => file.endsWith('.html'));
   const missing = [];
