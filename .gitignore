@@ -9,6 +9,7 @@ blob-report/
 !.git*
 !.editorconfig
 !.node-version
+!.dockerignore
 !.nojekyll
 
 # VHS generated recordings

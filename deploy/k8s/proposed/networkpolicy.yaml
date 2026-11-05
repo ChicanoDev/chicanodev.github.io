@@ -1,0 +1,43 @@
+# PROPOSED, NOT APPLIED. Nothing references this file (no kustomization lists it),
+# so Argo CD ignores it. See docs/k8s-migration/networkpolicy.md for the evidence.
+# To adopt: move it to deploy/k8s/base/, add it to base/kustomization.yaml, and
+# merge (staging first).
+#
+# Effect: the chicanodev pods accept traffic ONLY from the Traefik pod on 8080
+# and may initiate NO connections at all (nginx serving static files needs none).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  labels:
+    app.kubernetes.io/name: chicanodev
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-traefik
+  labels:
+    app.kubernetes.io/name: chicanodev
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: chicanodev
+      app.kubernetes.io/component: web
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        # A single list item with BOTH selectors means namespace AND pod label.
+        # (Two separate items would mean OR: any pod in kube-system, or any
+        # Traefik-labelled pod in any namespace. That is the classic mistake.)
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8080
+          protocol: TCP

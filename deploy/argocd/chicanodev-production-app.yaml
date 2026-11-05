@@ -1,0 +1,36 @@
+# DO NOT APPLY until the production cutover is approved (docs/k8s-migration/cutover.md).
+#
+#   kubectl apply -n argocd -f deploy/argocd/chicanodev-production-app.yaml
+#
+# Argo CD syncs the production overlay from `main`. What reaches production:
+#   - the image digest: changed ONLY by the release workflow (a vX.Y.Z tag) or by
+#     a scheduled content rebuild of the already-released source;
+#   - the manifests (resources, probes, ingress...): reviewed PRs to main apply
+#     on merge. A release gates application CODE, not cluster configuration.
+#
+# Deletion is deliberately safe: no resources-finalizer, so deleting this
+# Application object leaves the running site alone.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chicanodev-production
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ChicanoDev/chicanodev.github.io.git
+    targetRevision: main
+    path: deploy/k8s/overlays/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chicanodev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    managedNamespaceMetadata:
+      labels:
+        pod-security.kubernetes.io/enforce: restricted
+        pod-security.kubernetes.io/enforce-version: latest

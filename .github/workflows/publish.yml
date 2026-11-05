@@ -1,0 +1,38 @@
+name: Publish scheduled posts
+
+# Hourly. GitHub may start scheduled runs late, or skip one under load; that is
+# fine because each run works from "what is visible NOW vs. what is deployed",
+# never from "what was due since the last run". Expect a post to go live within
+# roughly an hour of its date, plus build time. When no post is due the run
+# finishes in about a minute without building anything.
+#
+# Run it by hand (Actions > Publish scheduled posts > Run workflow) to publish
+# immediately after changing a post's date or retrying a failed deployment.
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    uses: ./.github/workflows/_publish-env.yml
+    permissions:
+      contents: write
+      packages: write
+    with:
+      env: staging
+
+  production:
+    uses: ./.github/workflows/_publish-env.yml
+    permissions:
+      contents: write
+      packages: write
+    with:
+      env: production

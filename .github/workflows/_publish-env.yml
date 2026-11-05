@@ -1,0 +1,121 @@
+name: Publish due posts for one environment (reusable)
+
+# A scheduled CONTENT REBUILD, not a release.
+#
+# A static site decides which posts exist when it is built, so a post dated in
+# the future only appears after another build. This workflow rebuilds the source
+# the environment is ALREADY running (its recorded commit, e.g. the v1.2.0 tag
+# for production), with a fresh BUILD_NOW. Unreleased commits on main are never
+# pulled in, so production code does not change.
+#
+# It is idempotent and self-healing: every run compares "posts visible now" with
+# "posts visible in the deployed build". A delayed or skipped cron run is simply
+# caught up by the next one, and when nothing is due it exits before building.
+
+on:
+  workflow_call:
+    inputs:
+      env:
+        description: staging or production
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      due: ${{ steps.plan.outputs.due }}
+      ref: ${{ steps.plan.outputs.ref }}
+      commit: ${{ steps.plan.outputs.commit }}
+    steps:
+      - name: Checkout main (scripts and desired state)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Read what is deployed
+        id: deployed
+        env:
+          ENV_NAME: ${{ inputs.env }}
+        run: |
+          set -euo pipefail
+          case "$ENV_NAME" in staging|production) ;; *) echo "::error::bad env"; exit 1;; esac
+          echo "commit=$(jq -r '.commit // ""' "deploy/k8s/overlays/$ENV_NAME/release.json")" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the deployed source
+        if: steps.deployed.outputs.commit != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.deployed.outputs.commit }}
+          path: deployed
+          persist-credentials: false
+
+      - name: Is anything due?
+        id: plan
+        env:
+          ENV_NAME: ${{ inputs.env }}
+        run: |
+          set -euo pipefail
+          dir=deployed/src/content/posts
+          [ -d "$dir" ] || dir=src/content/posts   # nothing deployed yet: plan sees "nothing to do"
+          node scripts/deploy-state.mjs plan --env "$ENV_NAME" --now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --posts-dir "$dir" | tee -a "$GITHUB_OUTPUT"
+          {
+            echo "### $ENV_NAME"
+            grep -E '^(due|ref|reason)=' "$GITHUB_OUTPUT" | tail -3 | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.due == 'true'
+    uses: ./.github/workflows/_build.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      commit: ${{ needs.plan.outputs.commit }}
+      ref: ${{ needs.plan.outputs.ref }}
+      tag-prefix: ${{ format('{0}-pub', needs.plan.outputs.ref) }}
+      # The source was fully tested when it was released or merged.
+      full-test: false
+
+  promote:
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      # `content` promotions only succeed if the deployed ref+commit are STILL
+      # what we rebuilt. If a release or a new staging commit landed meanwhile,
+      # this is skipped and the next scheduled run recomputes from the new state.
+      - name: Promote content rebuild
+        env:
+          ENV_NAME: ${{ inputs.env }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+          REF: ${{ needs.plan.outputs.ref }}
+          COMMIT: ${{ needs.plan.outputs.commit }}
+          BUILD_NOW: ${{ needs.build.outputs.build-now }}
+          PUBLISHED: ${{ needs.build.outputs.published }}
+        run: scripts/ci/promote.sh "$ENV_NAME" content "$DIGEST" "$REF" "$COMMIT" "$BUILD_NOW" "$PUBLISHED"

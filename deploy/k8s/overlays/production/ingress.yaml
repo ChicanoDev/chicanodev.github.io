@@ -1,0 +1,58 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chicanodev
+  labels:
+    app.kubernetes.io/name: chicanodev
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.options: default-cloudflare-aop@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [chicanodev.com]
+      secretName: chicanodev-tls-cert
+  rules:
+    - host: chicanodev.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: chicanodev
+                port:
+                  name: http
+---
+# www only exists to redirect to the apex. It still needs a backend to be a
+# valid Ingress, but the middleware answers first and the pod never sees it.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chicanodev-www
+  labels:
+    app.kubernetes.io/name: chicanodev
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.options: default-cloudflare-aop@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: chicanodev-www-to-apex@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [www.chicanodev.com]
+      secretName: chicanodev-www-tls-cert
+  rules:
+    - host: www.chicanodev.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: chicanodev
+                port:
+                  name: http

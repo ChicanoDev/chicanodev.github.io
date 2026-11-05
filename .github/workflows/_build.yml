@@ -1,0 +1,142 @@
+name: Build image (reusable)
+
+# Builds ONE immutable image from ONE commit, proves it works, and publishes it
+# to GHCR. It never touches Git desired-state or the cluster: callers decide
+# what to do with the digest it returns.
+#
+# BUILD_NOW is stamped here, once, and flows into the Docker build, so the
+# publication cutoff is explicit and recorded in /version.json.
+
+on:
+  workflow_call:
+    inputs:
+      commit:
+        description: Full commit SHA to build.
+        type: string
+        required: true
+      ref:
+        description: Human ref baked into /version.json (v1.2.0, or main).
+        type: string
+        required: true
+      tag-prefix:
+        description: Image tag prefix (default sha-<short commit>); a UTC timestamp is appended so tags are never reused.
+        type: string
+        default: ''
+      full-test:
+        description: Run the whole test suite (astro check, unit, Playwright) before building.
+        type: boolean
+        default: true
+    outputs:
+      digest:
+        description: Image digest, sha256:...
+        value: ${{ jobs.build.outputs.digest }}
+      build-now:
+        description: Publication cutoff used for this build (ISO-8601 UTC).
+        value: ${{ jobs.build.outputs.build-now }}
+      published:
+        description: JSON array of post ids actually present in the built site.
+        value: ${{ jobs.build.outputs.published }}
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/chicanodev/chicanodev-site
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      build-now: ${{ steps.build.outputs.build-now }}
+      published: ${{ steps.verify.outputs.published }}
+    steps:
+      - name: Checkout ${{ inputs.ref }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+
+      - name: Setup Node
+        if: inputs.full-test
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        if: inputs.full-test
+        run: npm ci
+
+      - name: Install Playwright browser
+        if: inputs.full-test
+        run: npx playwright install --with-deps chromium
+
+      - name: Check, build, and test this commit
+        if: inputs.full-test
+        timeout-minutes: 10
+        run: npm test
+
+      - name: Build image
+        id: build
+        timeout-minutes: 10
+        env:
+          COMMIT: ${{ inputs.commit }}
+          REF: ${{ inputs.ref }}
+          PREFIX: ${{ inputs.tag-prefix }}
+        run: |
+          set -euo pipefail
+          build_now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          PREFIX="${PREFIX:-sha-${COMMIT:0:7}}"
+          tag="${PREFIX}-$(date -u +%Y%m%d%H%M%S)"
+          docker build \
+            --build-arg BUILD_NOW="$build_now" \
+            --build-arg REF="$REF" \
+            --build-arg COMMIT="$COMMIT" \
+            --tag "$IMAGE:$tag" .
+          echo "build-now=$build_now" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Test the image as Kubernetes will run it
+        timeout-minutes: 5
+        env:
+          CONTAINER_TEST_IMAGE: ${{ env.IMAGE }}:${{ steps.build.outputs.tag }}
+        run: npm run test:container
+
+      - name: Verify what was published matches the prediction
+        id: verify
+        env:
+          BUILD_NOW: ${{ steps.build.outputs.build-now }}
+          TAG: ${{ steps.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          built=$(docker run --rm --entrypoint cat "$IMAGE:$TAG" /usr/share/nginx/html/version.json | jq -cS '.published | sort')
+          if [ -f scripts/published-posts.mjs ]; then
+            predicted=$(node scripts/published-posts.mjs --now "$BUILD_NOW" | jq -cS 'sort')
+            if [ "$built" != "$predicted" ]; then
+              echo "::error::Predicted publication set differs from the built site."
+              echo "predicted: $predicted"
+              echo "built:     $built"
+              echo "Scheduled rebuilds would loop; refusing to publish this image."
+              exit 1
+            fi
+          else
+            echo "::warning::scripts/published-posts.mjs missing at this commit; skipping prediction check"
+          fi
+          echo "published=$built" >> "$GITHUB_OUTPUT"
+
+      - name: Push image
+        id: push
+        env:
+          TAG: ${{ steps.build.outputs.tag }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:$TAG"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$TAG" | sed 's/.*@//')
+          case "$digest" in sha256:????????????????????????????????????????????????????????????????) ;; *) echo "::error::bad digest '$digest'"; exit 1;; esac
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Pushed $IMAGE:$TAG ($digest)" >> "$GITHUB_STEP_SUMMARY"

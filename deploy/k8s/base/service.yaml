@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: chicanodev
+  labels:
+    app.kubernetes.io/name: chicanodev
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: chicanodev
+    app.kubernetes.io/component: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

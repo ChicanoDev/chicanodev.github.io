@@ -1,12 +1,23 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { site } from '../data/site';
+import { isPublished, resolveNow } from './publishing';
 
 export type Post = CollectionEntry<'posts'>;
 
+// One cutoff per build. Resolved once so every page, feed and sitemap in the
+// same build agrees on what "published" means, even if the build straddles a
+// minute boundary. CI pins it with BUILD_NOW; otherwise it is the real clock.
+let buildNow: Date | undefined;
+function cutoff(): Date {
+  buildNow ??= resolveNow(process.env.BUILD_NOW);
+  return buildNow;
+}
+
 export async function getPosts(): Promise<Post[]> {
   const posts = await getCollection('posts', ({ data }) => {
-    if (import.meta.env.PROD) return !data.draft;
-    return true;
+    // `astro dev` shows drafts and scheduled posts so they can be previewed.
+    if (!import.meta.env.PROD) return true;
+    return isPublished(data, cutoff());
   });
   return posts.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 }
