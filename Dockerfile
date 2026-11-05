@@ -37,6 +37,11 @@ RUN export BUILD_NOW="${BUILD_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" \
 # and keeps its pid/temp files in /tmp, so the root filesystem can be read-only.
 FROM nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
 
+# Links the GHCR package to this repository, so the workflows' GITHUB_TOKEN may push it.
+LABEL org.opencontainers.image.source="https://github.com/ChicanoDev/chicanodev.github.io" \
+      org.opencontainers.image.description="ChicanoDev static site (nginx-unprivileged)" \
+      org.opencontainers.image.licenses="MIT"
+
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY deploy/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html

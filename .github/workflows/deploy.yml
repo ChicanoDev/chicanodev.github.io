@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  # Pages fallback: rebuild when a scheduled post has become due (see `plan`).
+  schedule:
+    - cron: '37 * * * *'
 
 permissions:
   contents: read
@@ -36,8 +39,53 @@ jobs:
       - name: Check, build, and test
         run: npm test
 
+      - name: Test the container image
+        timeout-minutes: 5
+        run: npm run test:container
+
+  # Scheduled runs only: has any post become visible since the last successful
+  # run of this workflow? Compares "posts visible now" with "posts visible when
+  # that run started". Stateless, so a missed or delayed cron run self-heals.
+  plan:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      due: ${{ steps.due.outputs.due }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Has a post become due?
+        id: due
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          last=$(gh run list --workflow deploy.yml --branch main --status success --limit 30 \
+            --json createdAt,event --jq '[.[] | select(.event != "pull_request")][0].createdAt // ""')
+          if [ -z "$last" ]; then echo "due=true" >> "$GITHUB_OUTPUT"; echo "No earlier successful run: building."; exit 0; fi
+          before=$(node scripts/published-posts.mjs --now "$last")
+          after=$(node scripts/published-posts.mjs --now "$now")
+          if [ "$before" = "$after" ]; then due=false; else due=true; fi
+          echo "due=$due" >> "$GITHUB_OUTPUT"
+          echo "last success: $last | before: $before | after: $after | due: $due"
+
   publish:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: plan
+    # `!cancelled()` lets this run when `plan` was skipped (every non-scheduled event).
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || needs.plan.outputs.due == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
