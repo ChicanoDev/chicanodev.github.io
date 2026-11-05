@@ -12,6 +12,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
+    "test:container": "node --test scripts/container/container.test.mjs",
     "test": "astro check && astro build && node --test scripts/*.test.mjs && playwright test"
   },
   "dependencies": {
