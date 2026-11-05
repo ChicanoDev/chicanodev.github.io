@@ -1,0 +1,34 @@
+# NOT applied by CI. Apply once, by hand, after reviewing (see docs/k8s-migration/runbook.md):
+#
+#   kubectl apply -n argocd -f deploy/argocd/chicanodev-staging-app.yaml
+#
+# Argo CD syncs the staging overlay from `main`. CI rewrites the image digest in
+# that overlay after each successful build, Argo notices the Git change and
+# rolls the Deployment. CI never calls Argo or the cluster.
+#
+# The repo is public, so Argo needs no repository credentials.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chicanodev-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ChicanoDev/chicanodev.github.io.git
+    targetRevision: main
+    path: deploy/k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chicanodev-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    managedNamespaceMetadata:
+      labels:
+        # The Kubernetes API itself rejects pods that break the "restricted" profile.
+        pod-security.kubernetes.io/enforce: restricted
+        pod-security.kubernetes.io/enforce-version: latest
