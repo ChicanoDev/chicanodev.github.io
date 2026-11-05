@@ -144,5 +144,10 @@ it records what actually happened, including the mistakes. Newest at the bottom.
   broke the rejected-push test's setup (not the logic under test).
 - Two live problems on the old site: `www` has no TLS certificate on GitHub Pages,
   and `http://` does not redirect.
-- Unverified: whether the Cloudflare token behind cert-manager covers the
-  `chicanodev.com` zone. First thing staging will tell us.
+- Cloudflare token behind cert-manager, checked read-only: valid, no expiry,
+  account-owned, sees `chicanodev.com` and reads its DNS. Two things stay
+  unproven: that it can *edit* DNS there (only a write would prove it; the first
+  staging certificate will) and the zone's SSL mode / Authenticated Origin Pulls
+  (the token is DNS-only and cannot read settings, so that is a dashboard check).
+  Also found: MX and DKIM/SPF records share the zone, so the cutover must leave
+  them alone.

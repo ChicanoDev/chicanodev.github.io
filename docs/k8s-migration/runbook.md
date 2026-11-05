@@ -23,7 +23,12 @@ Nothing below happens automatically. Steps marked **you** need your Cloudflare o
 
 **0. Prechecks (you)**
 - Cloudflare zone `chicanodev.com`: SSL/TLS mode **Full (strict)**, and **Authenticated Origin Pulls ON** (SSL/TLS > Origin Server). Without the zone-level toggle Cloudflare presents no client certificate and Traefik rejects every request.
-- The Cloudflare API token that cert-manager's `letsencrypt-prod` issuer uses (`cloudflare-api-token-secret`, namespace `cert-manager`) must have `Zone:DNS:Edit` on **chicanodev.com**. It was created for other zones; I could not verify it without reading the secret. If it lacks the zone, the staging Certificate stays `False` with a DNS-01 error (step 7 shows how to see it).
+- **cert-manager's Cloudflare token** (`cloudflare-api-token-secret`, namespace `cert-manager`). Checked read-only on 2026-11-05 (token value never printed):
+  - Valid and active, no expiry. It is an account-owned token (`/user/tokens/verify` rejects it; `/accounts/<id>/tokens/verify` accepts it).
+  - It can see `chicanodev.com` (one of six zones: aihtx.church, chicanodev.com, cindiebakesstuff.com, cindiemakesstuff.com, dgvigil.dev, gv5tech.com) and read its DNS records.
+  - **Not proven:** that it has `DNS:Edit` here. Proving that needs a write, which I did not do. The first staging certificate is the real test: if `Certificate chicanodev-staging-tls-cert` stays `False` with a Cloudflare permission error (step 7), edit the token in Cloudflare > My Profile/Account > API Tokens and add `Zone:DNS:Edit` for `chicanodev.com`.
+  - It cannot read zone *settings* (SSL mode, Authenticated Origin Pulls, Always Use HTTPS all returned "Authentication error"). That is appropriate for a DNS-only token, so do not widen it. These three settings can only be confirmed in the dashboard (the first bullet).
+- **Email lives in this zone.** `chicanodev.com` has 3 MX records and DKIM/SPF TXT records, all DNS-only. Staging adds only `staging` A records. The production cutover must change **only** the 4 apex `A` records and the `www` `CNAME`, and leave MX/TXT alone (mail records must stay DNS-only).
 - Repo Settings > Actions > General > Workflow permissions: explicit per-job `permissions:` in the workflows are enough, but an org policy capping the token to read-only would block the digest commit and the image push.
 
 **1. Merge to `main`** (open a PR from `feat/k8s-container`; `deploy.yml` runs the tests). The merge starts `staging.yml`: full tests, image build, container test, push to `ghcr.io/chicanodev/chicanodev-site`, then a bot commit that sets the staging digest.
