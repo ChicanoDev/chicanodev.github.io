@@ -61,3 +61,88 @@ it records what actually happened, including the mistakes. Newest at the bottom.
   cannot know its public scheme/host behind Cloudflare and Traefik.
 - `/version.json` (ref, commit, buildNow) is baked in so humans and CI can ask a
   running pod what it is serving.
+
+## 2026-11-05: Scheduled publishing
+
+- **The core problem is that a static site has no "request time".** What is
+  visible is fixed when the build runs, so "publish at 9:00" really means "rebuild
+  after 9:00". Everything else follows from that.
+- **One function decides: `isPublished(post, now)`** (`src/lib/publishing.ts`).
+  Draft or `date > now` means hidden. `now` is an argument, never read inside, so
+  tests use fixed instants. `BUILD_NOW` pins it per build; one value per build so
+  every page, feed and sitemap agrees.
+- **Dates are instants, not wall-clock strings.** Front matter carries its offset
+  (`-0600`/`-0500`), so DST needs no timezone library; a test pins the CST/CDT edge.
+- **Tests that mattered:** a *non-draft* fixture dated 2099 (the draft fixture
+  alone proved nothing about dates); a build at `17:59:59Z` vs `18:00:00Z` either
+  side of the fixture's instant; and a scan of every html/xml/js/json/css file in
+  `dist` for the fixture's markers. No search index or related-posts exist, so
+  those two requirements are vacuously met today (noted, not claimed).
+- **Tagged production vs. scheduled posts (the design conflict).** If production
+  only changes on tags, a post dated after the tag's build would never appear; if
+  the cron rebuilt `main`, it would ship unreleased code. Resolution: keep two
+  inputs apart. *Source* = the Git ref production already runs; *cutoff* =
+  `BUILD_NOW`. The cron rebuilds the recorded commit with a fresh cutoff. That is a
+  **content rebuild, not a release**. State lives in `release.json` next to the
+  digest, in Git, no database.
+- **Concurrency without a lock.** GitHub keeps only one *pending* run per group and
+  cancels older ones, so one shared group could let a cron run silently cancel a
+  pending release. Instead: per-workflow groups to avoid duplicate builds, and
+  *correctness* from Git: `promote.sh` re-reads fresh `main`, re-checks the rules,
+  and a rejected non-fast-forward push means "start over". Tested against a real
+  bare remote, including a forced push rejection.
+- **Late or duplicate workflows can't win** (unit-tested in `deploy-state`): older
+  release tag, content rebuild of a source that was superseded, older staging commit.
+- **Prediction vs. reality.** The cron predicts "what should be public" from front
+  matter without building; `_build.yml` then checks the built image lists exactly
+  that. Without the check, any disagreement would trigger a rebuild every hour.
+- **No Cloudflare purge token in CI.** HTML/RSS/sitemap are served
+  `max-age=0, must-revalidate` and Cloudflare does not cache HTML by default, so
+  there is nothing to purge. One fewer secret.
+
+## 2026-11-05: Kubernetes and GitOps
+
+- **Namespaces `chicanodev-staging` and `chicanodev`**, not one shared namespace:
+  matches the cluster's `old-town-staging` pattern, avoids name clashes, keeps
+  future policies and RBAC separate.
+- **Manifests in this repo (`deploy/k8s`)**, following gv5tech-website. `gv5-k8s`
+  turned out to hold only platform pieces; "bump gv5-k8s" does not exist.
+- **Trade-off made explicit:** both Argo apps track `main`, so a *manifest* change
+  (probes, resources) reaches production when merged, while *application code*
+  reaches production only through a tag. A release gates the image, not config.
+- **`ScheduleAnyway` topology spread** instead of a hard rule: a soft preference
+  can never wedge a rollout; with 6 nodes it spreads anyway.
+- **Policy test over rendered manifests** (`manifests.test.mjs`): asserts digest
+  images, probes, read-only root, dropped capabilities, no Secrets/RBAC, AOP
+  annotation on *every* Ingress. Written after the manifests (not strictly
+  test-first); verified it can fail by flipping `readOnlyRootFilesystem`.
+- **Server-side dry-run needs the namespace to exist**; it does not until Argo
+  creates it, so the dry-run was done with the namespace rewritten to `default`
+  (validates schemas and CRDs, persists nothing).
+- **Repo is public**, so Argo needs no credentials and the GHCR package can be
+  public with no pull secret. `main` has no branch protection, so the bot commit
+  needs no ruleset exception today.
+- **ARC runners rejected** for this repo: org-scoped to a different org, and
+  Docker-in-Docker (privileged). GitHub-hosted runners keep PR code off the cluster.
+
+## 2026-11-05: NetworkPolicy
+
+- Flannel does not enforce policy; k3s bundles a separate controller. No node had
+  it disabled, but I did not trust "no flag" and tested enforcement in disposable
+  namespaces. Result: ingress and egress are enforced; kubelet probes are
+  unaffected by default-deny; the namespace-AND-label selector works. See
+  [networkpolicy.md](networkpolicy.md). Not applied; awaiting approval.
+
+## Surprises and mistakes (series material)
+
+- `try_files $uri $uri/index.html $uri/` served every page at two URLs (see above).
+- I wrote `substr()` in a workflow expression; GitHub Actions has no such function.
+  `actionlint` caught it before it ever ran.
+- YAML anchors do not cross `---` document boundaries in a multi-document file;
+  `kubectl apply` failed on the probe pods.
+- A freshly created bare Git repo on this machine had no `hooks/` directory, which
+  broke the rejected-push test's setup (not the logic under test).
+- Two live problems on the old site: `www` has no TLS certificate on GitHub Pages,
+  and `http://` does not redirect.
+- Unverified: whether the Cloudflare token behind cert-manager covers the
+  `chicanodev.com` zone. First thing staging will tell us.

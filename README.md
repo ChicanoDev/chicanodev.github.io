@@ -88,6 +88,16 @@ Repository settings that must stay as they are:
 
 `public/.nojekyll` is copied into the build so GitHub Pages will not run Jekyll on the artifact.
 
+## Scheduled posts
+
+A post is public only if `draft: false` **and** its `date` (an instant, offset included) is not in the future at build time. Write future-dated posts normally and keep `draft: false`; an hourly workflow rebuilds when one becomes due. `BUILD_NOW=<ISO instant>` pins the cutoff for a build, and `node scripts/published-posts.mjs --now <ISO instant>` lists what would be public. `astro dev` still shows drafts and scheduled posts so you can preview them.
+
+## Kubernetes deployment
+
+The same site also runs as an unprivileged nginx container on the k3s cluster, deployed by Argo CD. Staging follows `main`; production follows `vX.Y.Z` tags (`scripts/release.sh`). See [`docs/k8s-migration/`](docs/k8s-migration/): [architecture](docs/k8s-migration/architecture.md), [runbook](docs/k8s-migration/runbook.md) (bring-up, rollback, troubleshooting), [decisions](docs/k8s-migration/decisions.md), [NetworkPolicy findings](docs/k8s-migration/networkpolicy.md).
+
+`npm run test:container` builds the image and tests it the way Kubernetes runs it (needs Docker). GitHub Pages remains deployable as a fallback.
+
 ## Fonts
 
 Atkinson Hyperlegible and IBM Plex Mono are vendored at build time and used under the SIL Open Font License. See `NOTICE`.
