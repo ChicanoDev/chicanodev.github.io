@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chicanodev
+  labels:
+    app.kubernetes.io/name: chicanodev
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # Cloudflare Authenticated Origin Pulls: only Cloudflare's client cert is accepted.
+    # This is opt-in per Ingress in this cluster; leaving the line out disables it.
+    traefik.ingress.kubernetes.io/router.tls.options: default-cloudflare-aop@kubernetescrd
+    # <namespace>-<middleware name>@kubernetescrd, comma separated, applied in order.
+    traefik.ingress.kubernetes.io/router.middlewares: chicanodev-staging-basic-auth@kubernetescrd,chicanodev-staging-noindex@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [staging.chicanodev.com]
+      secretName: chicanodev-staging-tls-cert
+  rules:
+    - host: staging.chicanodev.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: chicanodev
+                port:
+                  name: http

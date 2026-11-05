@@ -1,0 +1,11 @@
+# Canonical host is the apex, chicanodev.com (matches `site` in astro.config.ts,
+# canonical URLs, RSS and the sitemap). www answers with a permanent redirect.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: www-to-apex
+spec:
+  redirectRegex:
+    regex: '^https?://www\.chicanodev\.com/(.*)'
+    replacement: 'https://chicanodev.com/${1}'
+    permanent: true

@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# PRODUCTION follows release tags (vX.Y.Z). CI rewrites the digest below when a
+# release is promoted, or when a scheduled content rebuild of the SAME released
+# source makes new posts visible (scripts/deploy-state.mjs). Roll back with
+# `git revert` of the CI commit or the release workflow's rollback input.
+namespace: chicanodev
+
+resources:
+  - ../../base
+  - middlewares.yaml
+  - ingress.yaml
+
+images:
+  - name: ghcr.io/chicanodev/chicanodev-site
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000

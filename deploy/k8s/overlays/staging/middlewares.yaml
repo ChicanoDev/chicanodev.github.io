@@ -1,0 +1,26 @@
+# Staging is private. Two layers, because robots.txt alone is only a request:
+#   1. basic auth: the real access control. Visitors without credentials never
+#      reach the pod. The credentials Secret is created by hand and is NOT in Git:
+#        htpasswd -nbB <user> '<password>' | \
+#          kubectl -n chicanodev-staging create secret generic chicanodev-staging-basic-auth \
+#            --from-file=users=/dev/stdin
+#      If the Secret is missing, Traefik refuses the route (fails closed, not open).
+#   2. X-Robots-Tag: noindex, for the case where a URL leaks anyway.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: basic-auth
+spec:
+  basicAuth:
+    secret: chicanodev-staging-basic-auth
+    realm: ChicanoDev staging
+    removeHeader: true # do not forward the Authorization header to the pod
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: noindex
+spec:
+  headers:
+    customResponseHeaders:
+      X-Robots-Tag: "noindex, nofollow, noarchive"

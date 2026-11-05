@@ -1,0 +1,14 @@
+# Voluntary disruptions (node drains, upgrades) may evict at most one of the
+# two pods at a time. It does not protect against crashes or node failure.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chicanodev
+  labels:
+    app.kubernetes.io/name: chicanodev
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: chicanodev
+      app.kubernetes.io/component: web
