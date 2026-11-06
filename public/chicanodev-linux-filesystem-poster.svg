@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="7200" height="10800" viewBox="0 0 1728 2592" role="img" aria-labelledby="title desc"><title id="title">The Linux Filesystem - ChicanoDev</title><desc id="desc">A directory reference covering the filesystem root, 20 common top-level paths, and important subdirectories of usr and var.</desc>
+<rect x="0" y="0" width="1728" height="2592" rx="0" fill="#282a36"/>
+<rect x="64" y="46" width="320" height="6" rx="0" fill="#ff79c6"/>
+<rect x="384" y="46" width="320" height="6" rx="0" fill="#bd93f9"/>
+<rect x="704" y="46" width="320" height="6" rx="0" fill="#8be9fd"/>
+<rect x="1024" y="46" width="320" height="6" rx="0" fill="#50fa7b"/>
+<rect x="1344" y="46" width="320" height="6" rx="0" fill="#f1fa8c"/>
+<text x="64" y="108" fill="#8be9fd" font-family="DejaVu Sans Mono" font-weight="bold" font-size="25">CHICANODEV</text>
+<text x="1210" y="108" fill="#c7c9d5" font-family="DejaVu Sans Mono" font-weight="bold" font-size="20">FIELD GUIDE / 01</text>
+<text x="60" y="220" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="bold" font-size="96">THE LINUX</text>
+<text x="60" y="327" fill="#bd93f9" font-family="DejaVu Sans" font-weight="bold" font-size="112">FILESYSTEM</text>
+<text x="66" y="385" fill="#c7c9d5" font-family="DejaVu Sans" font-weight="normal" font-size="30">One tree. Every path has a place.</text>
+<rect x="64" y="428" width="1600" height="148" rx="14" fill="#303340"/>
+<rect x="64" y="428" width="8" height="148" rx="0" fill="#ff79c6"/>
+<text x="94" y="493" fill="#ff79c6" font-family="DejaVu Sans Mono" font-weight="bold" font-size="58">/</text>
+<text x="177" y="481" fill="#ff79c6" font-family="DejaVu Sans" font-weight="bold" font-size="23">THE FILESYSTEM ROOT</text>
+<text x="177" y="522" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="25">The starting point of every absolute path. Disks, devices, and other filesystems join this single tree at mount</text>
+<text x="177" y="557" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="25">points.</text>
+<text x="64" y="626" fill="#c7c9d5" font-family="DejaVu Sans Mono" font-weight="bold" font-size="22">DIRECTLY UNDER /</text>
+<path d="M864 576L864 651" stroke="#6272a4" stroke-width="2" fill="none"/>
+<path d="M80 651L1648 651" stroke="#6272a4" stroke-width="2" fill="none"/>
+<path d="M80 651L80 691" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="96" y="697" fill="#bd93f9" font-family="DejaVu Sans" font-weight="bold" font-size="19">PROGRAMS &amp; BOOT</text>
+<rect x="64" y="723" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="64" y="723" width="4" height="144" rx="0" fill="#bd93f9"/>
+<text x="86" y="764" fill="#bd93f9" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/bin</text>
+<text x="86" y="800" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Essential command-line programs. Often a</text>
+<text x="86" y="827" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">symbolic link to /usr/bin.</text>
+<rect x="64" y="881" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="64" y="881" width="4" height="144" rx="0" fill="#bd93f9"/>
+<text x="86" y="922" fill="#bd93f9" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/sbin</text>
+<text x="86" y="958" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">System administration commands. Often</text>
+<text x="86" y="985" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">linked into /usr; layouts vary.</text>
+<rect x="64" y="1039" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="64" y="1039" width="4" height="144" rx="0" fill="#bd93f9"/>
+<text x="86" y="1080" fill="#bd93f9" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/lib</text>
+<text x="86" y="1116" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Core shared libraries and kernel modules.</text>
+<text x="86" y="1143" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Often linked to /usr/lib.</text>
+<rect x="64" y="1197" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="64" y="1197" width="4" height="144" rx="0" fill="#bd93f9"/>
+<text x="86" y="1238" fill="#bd93f9" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/lib64</text>
+<text x="86" y="1274" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">64-bit libraries on some systems. May link</text>
+<text x="86" y="1301" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">to /usr/lib64.</text>
+<rect x="64" y="1355" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="64" y="1355" width="4" height="144" rx="0" fill="#bd93f9"/>
+<text x="86" y="1396" fill="#bd93f9" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/boot</text>
+<text x="86" y="1432" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Kernel, initial RAM filesystem, and</text>
+<text x="86" y="1459" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">boot-loader files. EFI files may live in</text>
+<text x="86" y="1486" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">/boot/efi or /efi.</text>
+<rect x="64" y="1513" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="64" y="1513" width="4" height="144" rx="0" fill="#bd93f9"/>
+<text x="86" y="1554" fill="#bd93f9" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/etc</text>
+<text x="86" y="1590" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">System-wide configuration for this machine,</text>
+<text x="86" y="1617" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">including services, users, and networking.</text>
+<path d="M624 651L624 691" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="640" y="697" fill="#8be9fd" font-family="DejaVu Sans" font-weight="bold" font-size="19">DEVICES &amp; RUNTIME</text>
+<rect x="608" y="723" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="608" y="723" width="4" height="144" rx="0" fill="#8be9fd"/>
+<text x="630" y="764" fill="#8be9fd" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/dev</text>
+<text x="630" y="800" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Device interfaces such as disks, terminals,</text>
+<text x="630" y="827" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">and /dev/null. Many are special files.</text>
+<rect x="608" y="881" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="608" y="881" width="4" height="144" rx="0" fill="#8be9fd"/>
+<text x="630" y="922" fill="#8be9fd" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/proc</text>
+<text x="630" y="958" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Virtual files exposing running processes and</text>
+<text x="630" y="985" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">kernel information, such as /proc/cpuinfo.</text>
+<rect x="608" y="1039" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="608" y="1039" width="4" height="144" rx="0" fill="#8be9fd"/>
+<text x="630" y="1080" fill="#8be9fd" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/sys</text>
+<text x="630" y="1116" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Virtual files exposing devices, drivers, and</text>
+<text x="630" y="1143" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">kernel settings through sysfs.</text>
+<rect x="608" y="1197" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="608" y="1197" width="4" height="144" rx="0" fill="#8be9fd"/>
+<text x="630" y="1238" fill="#8be9fd" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/run</text>
+<text x="630" y="1274" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Runtime state such as sockets, PID files,</text>
+<text x="630" y="1301" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">and locks. Recreated at boot.</text>
+<rect x="608" y="1355" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="608" y="1355" width="4" height="144" rx="0" fill="#8be9fd"/>
+<text x="630" y="1396" fill="#8be9fd" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/tmp</text>
+<text x="630" y="1432" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Short-lived temporary files. Cleanup may</text>
+<text x="630" y="1459" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">occur at boot or at scheduled intervals.</text>
+<rect x="608" y="1513" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="608" y="1513" width="4" height="144" rx="0" fill="#8be9fd"/>
+<text x="630" y="1554" fill="#8be9fd" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/lost+found</text>
+<text x="630" y="1590" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Recovered files from filesystem checks on</text>
+<text x="630" y="1617" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">some filesystems, such as ext4. Not</text>
+<text x="630" y="1644" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">universal.</text>
+<path d="M1168 651L1168 691" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="1184" y="697" fill="#50fa7b" font-family="DejaVu Sans" font-weight="bold" font-size="19">PEOPLE &amp; STORAGE</text>
+<rect x="1152" y="723" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="1152" y="723" width="4" height="144" rx="0" fill="#50fa7b"/>
+<text x="1174" y="764" fill="#50fa7b" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/home</text>
+<text x="1174" y="800" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Personal directories for ordinary users, such</text>
+<text x="1174" y="827" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">as /home/dave.</text>
+<rect x="1152" y="881" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="1152" y="881" width="4" height="144" rx="0" fill="#50fa7b"/>
+<text x="1174" y="922" fill="#50fa7b" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/root</text>
+<text x="1174" y="958" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">The root administrator account's home</text>
+<text x="1174" y="985" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">directory. This is different from /.</text>
+<rect x="1152" y="1039" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="1152" y="1039" width="4" height="144" rx="0" fill="#50fa7b"/>
+<text x="1174" y="1080" fill="#50fa7b" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/media</text>
+<text x="1174" y="1116" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Mount points for removable media.</text>
+<text x="1174" y="1143" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Desktops may instead use /run/media.</text>
+<rect x="1152" y="1197" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="1152" y="1197" width="4" height="144" rx="0" fill="#50fa7b"/>
+<text x="1174" y="1238" fill="#50fa7b" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/mnt</text>
+<text x="1174" y="1274" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">A conventional mount point for temporarily</text>
+<text x="1174" y="1301" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">attaching a filesystem.</text>
+<rect x="1152" y="1355" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="1152" y="1355" width="4" height="144" rx="0" fill="#50fa7b"/>
+<text x="1174" y="1396" fill="#50fa7b" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/opt</text>
+<text x="1174" y="1432" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Optional add-on software, often stored in a</text>
+<text x="1174" y="1459" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">separate directory for each application.</text>
+<rect x="1152" y="1513" width="512" height="144" rx="10" fill="#303340"/>
+<rect x="1152" y="1513" width="4" height="144" rx="0" fill="#50fa7b"/>
+<text x="1174" y="1554" fill="#50fa7b" font-family="DejaVu Sans Mono" font-weight="bold" font-size="29">/srv</text>
+<text x="1174" y="1590" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">Data provided by this machine's services,</text>
+<text x="1174" y="1617" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="21">such as files for a web or FTP server.</text>
+<text x="64" y="1726" fill="#c7c9d5" font-family="DejaVu Sans Mono" font-weight="bold" font-size="22">TWO MORE ROOT DIRECTORIES, EXPANDED</text>
+<rect x="64" y="1755" width="784" height="616" rx="14" fill="#303340"/>
+<rect x="64" y="1755" width="784" height="5" rx="0" fill="#ff79c6"/>
+<text x="89" y="1811" fill="#ff79c6" font-family="DejaVu Sans Mono" font-weight="bold" font-size="36">/usr</text>
+<text x="232" y="1807" fill="#ff79c6" font-family="DejaVu Sans" font-weight="bold" font-size="22">INSTALLED SOFTWARE</text>
+<text x="89" y="1848" fill="#c7c9d5" font-family="DejaVu Sans" font-weight="normal" font-size="21">Programs, libraries, and shared resources. User home directories</text>
+<text x="89" y="1876" fill="#c7c9d5" font-family="DejaVu Sans" font-weight="normal" font-size="21">belong in /home.</text>
+<path d="M90 1910L90 2339" stroke="#6272a4" stroke-width="2" fill="none"/>
+<path d="M90 1918L108 1918" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="120" y="1926" fill="#ff79c6" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/usr/bin</text>
+<text x="120" y="1952" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Most installed user commands and executables.</text>
+<path d="M90 1989L108 1989" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="120" y="1997" fill="#ff79c6" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/usr/sbin</text>
+<text x="120" y="2023" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Administrative programs; may link to /usr/bin.</text>
+<path d="M90 2060L108 2060" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="120" y="2068" fill="#ff79c6" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/usr/lib</text>
+<text x="120" y="2094" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Libraries and support files for installed software.</text>
+<path d="M90 2131L108 2131" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="120" y="2139" fill="#ff79c6" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/usr/share</text>
+<text x="120" y="2165" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Architecture-independent data: manuals, icons, locales.</text>
+<path d="M90 2202L108 2202" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="120" y="2210" fill="#ff79c6" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/usr/local</text>
+<text x="120" y="2236" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Software installed locally by the administrator.</text>
+<path d="M90 2273L108 2273" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="120" y="2281" fill="#ff79c6" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/usr/include</text>
+<text x="120" y="2307" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Header files used when compiling software.</text>
+<rect x="880" y="1755" width="784" height="616" rx="14" fill="#303340"/>
+<rect x="880" y="1755" width="784" height="5" rx="0" fill="#ffb86c"/>
+<text x="905" y="1811" fill="#ffb86c" font-family="DejaVu Sans Mono" font-weight="bold" font-size="36">/var</text>
+<text x="1048" y="1807" fill="#ffb86c" font-family="DejaVu Sans" font-weight="bold" font-size="22">CHANGING SYSTEM DATA</text>
+<text x="905" y="1848" fill="#c7c9d5" font-family="DejaVu Sans" font-weight="normal" font-size="21">State that changes during normal operation. Much of it persists</text>
+<text x="905" y="1876" fill="#c7c9d5" font-family="DejaVu Sans" font-weight="normal" font-size="21">across reboots.</text>
+<path d="M906 1910L906 2339" stroke="#6272a4" stroke-width="2" fill="none"/>
+<path d="M906 1918L924 1918" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="936" y="1926" fill="#ffb86c" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/var/lib</text>
+<text x="936" y="1952" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Persistent state: databases, package records, and container data.</text>
+<path d="M906 1989L924 1989" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="936" y="1997" fill="#ffb86c" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/var/log</text>
+<text x="936" y="2023" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">System and application logs; persistent journals may also live here.</text>
+<path d="M906 2060L924 2060" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="936" y="2068" fill="#ffb86c" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/var/cache</text>
+<text x="936" y="2094" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Cached data that applications can recreate.</text>
+<path d="M906 2131L924 2131" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="936" y="2139" fill="#ffb86c" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/var/spool</text>
+<text x="936" y="2165" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Queued work waiting to be processed, such as print jobs or mail.</text>
+<path d="M906 2202L924 2202" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="936" y="2210" fill="#ffb86c" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/var/tmp</text>
+<text x="936" y="2236" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Temporary files intended to survive reboots; still subject to cleanup.</text>
+<path d="M906 2273L924 2273" stroke="#6272a4" stroke-width="2" fill="none"/>
+<text x="936" y="2281" fill="#ffb86c" font-family="DejaVu Sans Mono" font-weight="bold" font-size="23">/var/opt</text>
+<text x="936" y="2307" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="19">Changing application data for software installed under /opt.</text>
+<text x="64" y="2420" fill="#f1fa8c" font-family="DejaVu Sans Mono" font-weight="bold" font-size="21">READ THE TREE</text>
+<text x="328" y="2420" fill="#f8f8f2" font-family="DejaVu Sans" font-weight="normal" font-size="22">/var/lib is inside /var. A symbolic link points to another path.</text>
+<text x="64" y="2465" fill="#c7c9d5" font-family="DejaVu Sans" font-weight="normal" font-size="20">Common conventions, not a universal layout. Paths and links vary by distribution and installation.</text>
+<path d="M64 2491L1664 2491" stroke="#6272a4" stroke-width="1" fill="none"/>
+<text x="64" y="2532" fill="#8be9fd" font-family="DejaVu Sans Mono" font-weight="bold" font-size="24">chicanodev.com</text>
+<text x="648" y="2526" fill="#c7c9d5" font-family="DejaVu Sans" font-weight="normal" font-size="16">References: Linux man-pages hier(7) | UAPI Linux File System Hierarchy</text>
+<text x="648" y="2551" fill="#c7c9d5" font-family="DejaVu Sans" font-weight="normal" font-size="15">man7.org/linux/man-pages/man7/hier.7.html | uapi-group.org/specifications/</text>
+</svg>

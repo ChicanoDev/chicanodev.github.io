@@ -1,7 +1,7 @@
 ---
 title: "Linux Has No C: Drive: The Directory Structure, Explained"
-date: 2026-11-03 09:00:00 -0600
-description: "A friendly map of the Linux filesystem: what /, /etc, /home, /var, /usr, /proc and the rest are for, why they exist, and how to explore them safely."
+date: 2026-11-09 09:00:00 -0600
+description: "Linux has no C: drive. A friendly walk through /, /home, /root, /etc, where programs live, what changes while the system runs, and the weird directories that aren't really on disk."
 categories: [linux]
 tags: [linux, filesystem, beginners, terminal]
 draft: true
@@ -9,306 +9,390 @@ draft: true
 
 import YouTube from '../../components/YouTube.astro';
 
-If you came from Windows, the first time you list the top of a Linux system it feels like someone shuffled the furniture.
+When a Linux server runs out of space, knowing where to look is more useful than knowing twenty directory names by heart. The same goes for finding a configuration file, figuring out where a command is installed, or understanding what survives a reboot.
 
-No `C:`. No `D:`. No "Program Files." Just a pile of short, oddly named folders: `etc`, `var`, `usr`, `opt`, `srv`.
+The directory structure gives you clues. It separates software, configuration, persistent application data, and information about the running system. Once those differences make sense, the paths start to feel less arbitrary.
 
-Here's the good news: there is a logic to it. Once you know the logic, you can walk onto any Linux machine (a laptop, a server, a Raspberry Pi, a container) and know roughly where everything lives.
+This article goes deeper on my four-part Linux Directory Structure video series. Same directories, but with room to show how they fit together and what you can actually do with that knowledge. Read it top to bottom once, then keep it around: the map below is built for coming back to.
 
-This post is the long version of my four-part short series. The videos give you the one-minute tour of each folder. Here we get to slow down, poke around, and look at *why*.
+![The Linux filesystem — a ChicanoDev poster covering root, common top-level paths, and important subdirectories of /usr and /var](/chicanodev-linux-filesystem-poster.svg)
 
 {/*
   When the series is live, drop the playlist or first video here:
   <YouTube id="REPLACE_ME" title="Linux directory structure: no C: drive" />
 */}
 
-## One tree to rule them all
+## Quick map: where do I look?
 
-Windows gives every disk its own letter. Linux gives you **one tree**, and everything hangs off the top of it.
+Bookmark this one. Each row links to the section that explains it.
 
-That top is `/`, and we call it **root**. (Yes, there's also a user called root, and a folder called `/root`. We'll untangle that in a minute.)
+| What are you looking for? | Start here |
+| --- | --- |
+| Personal files or settings | [Your home directory](#home-personal-files-and-settings) |
+| System configuration | [`/etc`](#etc-system-configuration) |
+| Installed commands and libraries | [`/usr`](#usr-installed-system-software), with local software often under `/usr/local` or `/opt` |
+| Persistent service data | [`/var/lib`](#var-persistent-application-state-logs-and-caches), or the application's configured location |
+| Logs | `/var/log`, the system journal, or the application's logging destination |
+| Temporary working files | [`/tmp` or `/var/tmp`](#tmp-and-vartmp-temporary-storage-with-different-lifetimes), depending on the intended lifetime |
+| Runtime state for this boot | [`/run`](#run-temporary-state-for-the-current-boot) |
+| Process or kernel information | [`/proc`](#proc-process-and-kernel-information) |
+| Device and driver information | [`/sys`](#sys-devices-drivers-and-their-relationships) |
+| Files on another filesystem | Its [mount point](#one-tree-even-when-there-are-several-disks) |
 
-If you plug in a second disk, a USB stick, or a network share, it doesn't become `E:`. It gets **mounted**: attached to a folder somewhere in the tree, so its contents show up *inside* the tree.
+## Coming from Windows?
 
-Think of it like a big building with a single lobby. Every office, closet, and loading dock is reachable from that lobby. Some of those rooms might be in a different wing (a different disk), but you walk to them through the same hallways.
+If you're used to drive letters, this rough translation helps. Rough is the key word: the ideas line up, the details don't.
 
-You can see this for yourself:
+| On Windows | On Linux |
+| --- | --- |
+| `C:\` | `/` |
+| `C:\Users\you` | `/home/you` |
+| `C:\Program Files` | `/usr` (and sometimes `/opt`) |
+| Settings in the registry or `ProgramData` | `/etc` for system settings, `/var/lib` for app data |
+| `%TEMP%` | `/tmp` |
+| A second drive, `D:\` | A mount point, such as `/mnt/projects` |
+
+## One tree, even when there are several disks
+
+Linux doesn't assign a drive letter to each filesystem. Paths start at `/`, pronounced "slash" and called the root directory.
+
+List its contents:
+
+```sh
+ls /
+```
+
+You'll see names such as `etc`, `usr`, and `var`. Your list may differ from someone else's. Distributions, installation choices, and containers all affect what appears.
+
+The important part is that these paths belong to one directory tree. A filesystem on another disk becomes accessible through a directory in that tree. Attaching it there is called **mounting**, and the directory is its **mount point**.
+
+For example, you might mount a second disk's filesystem at `/mnt/projects`. Its files would then be accessible through paths such as `/mnt/projects/website`. The directory name alone doesn't tell you which physical disk stores the data.
+
+Mounting is different from copying: the files stay on that filesystem. Mounting makes them accessible at the chosen path.
+
+The [Filesystem Hierarchy Standard](https://specifications.freedesktop.org/fhs/latest/) documents many of the conventions behind these locations. Treat it as a useful reference, with room for distribution-specific differences.
+
+## Your home directory, the root directory, and the root user
+
+These names are easy to mix up because "root" does several jobs.
+
+### `/home`: personal files and settings
+
+On a typical desktop or server, regular users have home directories under `/home`, such as `/home/dave`.
+
+Your home holds more than documents and downloads. Many applications keep personal configuration and data there, often in names beginning with a dot. An ordinary `ls` hides those entries; `ls -a` includes them.
+
+List the home directories, then return to your own:
+
+```sh
+ls /home
+cd ~
+```
+
+The shell expands an unquoted `~` to your home directory. It doesn't mean `/home` itself, and a user's home can be configured somewhere else. Service accounts, for example, often use other locations.
+
+### `/root`: the root user's home
+
+The **root user** is the all-powerful admin account, with broad control over the system. Its home directory is conventionally `/root`.
+
+That is separate from `/`, the root directory of the whole tree.
+
+Access to `/root` is usually restricted. If your account is authorized to use `sudo`, you can list it with:
+
+```sh
+sudo ls /root
+```
+
+You don't need to run this to understand the layout. Permission denied is a useful boundary, not a reason to add `sudo` to every command.
+
+Keep these three meanings separate:
+
+| Name | Meaning |
+| --- | --- |
+| `/` | Root directory of the filesystem tree |
+| `root` | Administrative user account |
+| `/root` | That account's usual home directory |
+
+## `/etc`: system configuration
+
+The name is pronounced "et-see" by some people and "etsy" by others. Either way, if you're changing how a system service behaves, this is usually where you start.
+
+It contains system configuration, much of it in plain text files. Personal settings usually belong in your home directory instead.
+
+You can inspect your distribution's identification information with:
+
+```sh
+head /etc/os-release
+```
+
+Look for fields such as `NAME` and `VERSION_ID`; which fields are present depends on the distribution. This file identifies the operating system. It isn't a setting you edit to upgrade or rename the distribution.
+
+Configuration isn't all in one giant file. A few you'll run into early:
+
+| Path | What it holds |
+| --- | --- |
+| `/etc/hostname` | The machine's name |
+| `/etc/passwd` | The list of user accounts (despite the name, no passwords live here) |
+| `/etc/fstab` | Which filesystems get mounted at boot, tying back to the mounting idea above |
+| `/etc/ssh/` | SSH client and server configuration |
+
+Services often have their own files or directories, so when you're hunting for a setting, look for one named after the service.
+
+Before editing, check the service's documentation. Some files are generated by another tool, and some services support small override files that are easier to maintain than changes to the main configuration. A service may also need a reload or restart before a change takes effect.
+
+A backup helps, but knowing which file the service actually reads matters just as much.
+
+## Where installed programs live
+
+An application usually has several kinds of files: an executable program, supporting libraries, configuration, and data it writes while running.
+
+Those pieces don't necessarily live together. A program might be under `/usr/bin`, read configuration from `/etc`, and store persistent data under `/var/lib`.
+
+That separation explains much of the layout.
+
+### Find a command before guessing its location
+
+The video uses `which` to locate `ls`:
+
+```sh
+which ls
+readlink /bin
+readlink /sbin
+```
+
+`which` commonly searches the directories listed in your `PATH`, the shell's list of places to look for executable commands. Its availability and treatment of aliases vary.
+
+For checking what your shell resolves, another useful command is:
+
+```sh
+command -v ls
+```
+
+Depending on your shell configuration, that may identify an alias or function rather than print an executable's path. That's useful information too: the name you type isn't necessarily a standalone program.
+
+The two `readlink` commands inspect symbolic links, which are paths that point to other paths. On a merged-`/usr` installation, `/bin` and `/sbin` commonly point into `/usr`. The older paths still work.
+
+If `readlink` prints nothing, don't assume the directory is broken. It may be an actual directory rather than a symbolic link.
+
+### `/usr`: installed system software
+
+Despite its spelling, `/usr` isn't where your personal documents belong, and it doesn't stand for "user" in the way you'd expect. Think of it as the main home for system software.
+
+Explore its immediate contents:
+
+```sh
+ls /usr
+```
+
+Common subdirectories include:
+
+| Path | Typical contents |
+| --- | --- |
+| `/usr/bin` | Executable commands |
+| `/usr/sbin` | System administration commands, where kept separately |
+| `/usr/lib` | Libraries and supporting program files |
+| `/usr/share` | Architecture-independent resources, such as documentation and icons |
+
+Library layouts vary; you may also see `lib64` or architecture-specific subdirectories.
+
+A command being in `sbin` doesn't by itself require root access. Permissions and the operation the command performs determine that.
+
+### `/usr/local` and `/opt`: software outside the usual package layout
+
+`/usr/local` is traditionally reserved for software installed by the local administrator, separate from distribution-managed software:
+
+```sh
+ls /usr/local
+```
+
+For example, an administrator-maintained command might go in `/usr/local/bin`. It isn't a rule that every manually installed tool goes here: user-level installers may use locations such as `~/.local/bin`.
+
+`/opt` is another convention you'll encounter, especially for add-on software that keeps much of its installation in a dedicated application directory:
+
+```sh
+ls /opt
+```
+
+An empty `/opt` is perfectly normal. It doesn't mean you're missing part of Linux.
+
+### `/lib`: supporting libraries
+
+Programs often depend on shared libraries: code that multiple programs can use without each carrying its own copy.
+
+Traditionally, `/lib` contains libraries needed by essential programs, along with kernel modules in its hierarchy. On many modern installations it points into `/usr`:
+
+```sh
+readlink /lib
+```
+
+For troubleshooting, the practical lesson is to check your system's actual layout rather than assume that every distribution places a library at the same path.
+
+## What changes, and what survives a reboot?
+
+"Changes while Linux runs" is a broad category. A database should survive a reboot. A service's temporary socket usually shouldn't.
+
+The distinction is the lifetime and purpose of the data.
+
+### `/var`: persistent application state, logs, and caches
+
+Start by looking at its immediate contents:
+
+```sh
+ls /var
+```
+
+Three subdirectories are especially useful:
+
+- `/var/lib` holds persistent application state, such as database files and service-maintained data.
+- `/var/cache` holds cached data applications can generally regenerate.
+- `/var/log` holds many system and application logs.
+
+You can list the log directory without opening every log:
+
+```sh
+ls /var/log
+```
+
+Not every log is a plain text file here. Some systems use a journal that you inspect with `journalctl`, and applications may send logs elsewhere.
+
+If disk usage grows unexpectedly, `/var` is one of the first places I'd check. Start wide, then narrow down:
 
 ```sh
 df -h
-findmnt /
+sudo du -sh /var/* | sort -h
 ```
 
-`df -h` lists mounted filesystems and where they're attached. On most machines you'll see one big disk mounted at `/`, plus a handful of special ones. That's the tree.
+`df -h` shows how full each mounted filesystem is and where it's mounted, so you can tell whether `/var` shares a disk with everything else or has its own. `du -sh` sizes each directory under `/var`, and `sort -h` puts the biggest at the bottom.
 
-## The map
+Finding the culprit is the easy part. "Cache" doesn't mean "delete this directory while the application is running." Use the application's cleanup tools and documentation. Deleting database files under `/var/lib` can destroy the data you're trying to preserve.
 
-Here's the cheat-sheet version. Don't memorize it, just skim it once so the names look familiar:
+### `/tmp` and `/var/tmp`: temporary storage with different lifetimes
 
-```text
-/
-├── bin  -> usr/bin     essential commands (a shortcut these days)
-├── boot                kernel + bootloader files
-├── dev                 devices, shown as files
-├── etc                 system-wide configuration
-├── home                one folder per user
-│   └── dave            your stuff
-├── lib  -> usr/lib     shared code (also a shortcut)
-├── media               where removable drives show up
-├── mnt                 where you mount things by hand
-├── opt                 big self-contained third-party apps
-├── proc                live view of the kernel and processes
-├── root                the administrator's home folder
-├── run                 runtime data since boot
-├── sbin -> usr/sbin    admin commands (also a shortcut)
-├── srv                 data this machine serves to others
-├── sys                 live view of hardware and drivers
-├── tmp                 scratch space
-├── usr                 most installed software lives here
-└── var                 data that changes while the system runs
-```
-
-Those arrows (`->`) aren't decoration. On most modern distributions, `/bin`, `/sbin`, and `/lib` are just **symbolic links** (think shortcuts) into `/usr`. We'll get to why.
-
-This layout comes from a community standard called the **Filesystem Hierarchy Standard**, or FHS. Distros bend it here and there, but the big picture holds almost everywhere. Learn it once, use it forever.
-
-## Where *you* live: `/home` and `/root`
-
-`/home` is the friendliest folder on the system. Every regular user gets a subfolder: `/home/dave`, `/home/ana`, and so on. Your documents, downloads, and personal settings live there.
-
-The shell has a shortcut for it, the tilde:
+`/tmp` is working space for temporary files. Here's a small demonstration on a disposable practice system where `/tmp/note` doesn't already exist:
 
 ```sh
-cd ~          # go home
-echo ~        # print the path of your home folder
-ls -a ~       # include hidden files (the ones starting with a dot)
-```
-
-That last one is worth trying. Linux programs love to hide their settings in your home folder as "dotfiles": `.bashrc`, `.ssh`, `.config`. A leading dot just means "hidden from a plain `ls`." Nothing mysterious.
-
-Now the confusing part:
-
-| Path | What it is |
-| --- | --- |
-| `/` | The top of the whole filesystem ("root directory") |
-| `/root` | The home folder of the **root user** (the administrator) |
-| `root` (the user) | The all-powerful account on the system |
-
-Same word, three meanings. The administrator doesn't live in `/home` like everyone else. They get their own folder at `/root`, and regular users can't peek inside it:
-
-```sh
-ls /root           # Permission denied
-sudo ls -a /root   # works, if you're allowed to use sudo
-```
-
-> **Why separate it?** If `/home` is on a different disk and that disk fails, the administrator still needs a working home folder to log into and fix things. Keeping `/root` on the main disk is a tiny, old, sensible safety net.
-
-## The control room: `/etc`
-
-`/etc` is where configuration lives, and it's the folder you'll visit most as you go deeper into Linux.
-
-The name is pronounced "et-cee." It started out as "et cetera," the junk drawer of early Unix, and over time became the place for system-wide settings. The junk drawer got organized. The name stuck.
-
-The magic of `/etc` is that configuration is mostly **plain text**. No registry, no hidden binary blobs. You can read it, search it, back it up, and put it in Git.
-
-```sh
-head -3 /etc/os-release     # which distro am I on?
-ls /etc | head              # a peek at what's configured here
-cat /etc/hostname           # this machine's name
-```
-
-A few residents you'll meet sooner or later:
-
-| File or folder | What it controls |
-| --- | --- |
-| `/etc/os-release` | Which distro and version this is |
-| `/etc/passwd` | The list of user accounts (no passwords in there, despite the name) |
-| `/etc/ssh/` | SSH server and client settings |
-| `/etc/fstab` | Which disks to mount at boot |
-| `/etc/hosts` | A tiny local phone book mapping names to IP addresses |
-
-> **Heads up:** change a file in `/etc` and you're changing how the whole system behaves. Make a copy first (`sudo cp file file.bak`). Future you will say thanks.
-
-## Where programs live: `/usr`, `/bin`, `/opt`
-
-Here's where the history gets fun.
-
-On early Unix machines, `/bin` held the essential commands and `/usr` held user home directories. When the first disk filled up, the system builders moved things onto a second disk, and `/usr` became a place for *more* programs. For decades the split meant "the stuff you need to boot lives in `/bin`, and everything else lives in `/usr`."
-
-Disks got big. The split stopped being useful. So most modern distros **merged** them:
-
-```sh
-which ls          # /usr/bin/ls
-readlink /bin     # usr/bin
-readlink /sbin    # usr/sbin
-readlink /lib     # usr/lib
-```
-
-If you see those results, you're on a "merged `/usr`" system. The old paths still work (so old scripts don't break), but they point into `/usr`.
-
-So where does software actually go?
-
-| Folder | What goes there |
-| --- | --- |
-| `/usr/bin` | Programs everyone can run (`ls`, `grep`, `python3`) |
-| `/usr/sbin` | Admin tools (`useradd`, `fdisk`) |
-| `/usr/lib` | Libraries: shared code that programs depend on |
-| `/usr/share` | Data that doesn't change: docs, icons, man pages |
-| `/usr/local` | Software **you** installed by hand, outside the package manager |
-| `/opt` | Big third-party apps that bring their own everything |
-
-Two of those deserve a closer look.
-
-**`/usr/local`** is a safety zone. When the package manager updates your system, it manages `/usr/bin` and friends. It leaves `/usr/local` alone. So your own scripts and hand-built programs are safe from being overwritten.
-
-**`/opt`** is for apps that arrive as one self-contained bundle: think a web browser or a video-call app that ships its own libraries. Each one tends to get its own folder (`/opt/something`) rather than scattering files across `/usr`.
-
-> **Try it:** run `which python3` or `which git` and see where they live. Then `ls /usr/local/bin`. It's often empty, and that's fine. It's *your* space.
-
-## The folders that change: `/var`, `/tmp`, `/boot`
-
-Most of the filesystem sits still. These folders don't.
-
-### `/var`: "variable" data
-
-If a program writes data while it runs, it probably writes it under `/var`.
-
-| Folder | What's in it |
-| --- | --- |
-| `/var/log` | Logs. The first place to look when something breaks |
-| `/var/lib` | State that programs need to keep: databases, package records |
-| `/var/cache` | Data that's safe to delete, because it can be rebuilt |
-| `/var/spool` | Queues of work waiting to happen (print jobs, mail) |
-| `/var/tmp` | Temporary files that should survive a reboot |
-
-This is the folder that bites people. A runaway log can quietly eat the whole disk, and then everything starts failing in confusing ways. If a server suddenly misbehaves, ask yourself: *is the disk full?*
-
-```sh
-df -h /                                    # how full is the main disk?
-sudo du -xh /var --max-depth=1 | sort -h   # which part of /var is the biggest?
-ls /var/log                                # what's logging here?
-```
-
-That last pair is a detective move you'll use for the rest of your career: `df` finds the full disk, `du` finds the hog.
-
-### `/tmp`: the scratch pad
-
-Any user can write here, and on many systems it's wiped on reboot (some even keep it in RAM). It's great for throwaway files, and a terrible place for anything you care about.
-
-```sh
-echo "hello" > /tmp/note
+echo hi > /tmp/note
 cat /tmp/note
 ```
 
-If you need temporary files that survive a restart, `/var/tmp` is the usual answer.
+The first command writes a file; the second reads it. The `>` operator overwrites an existing file at that path, which is why the filename matters.
 
-### `/boot`: how the machine wakes up
+For scripts on a shared system, use `mktemp` to create a unique temporary file instead of choosing a predictable name.
 
-This holds the **kernel** (the core of the operating system) and the bootloader files that load it.
+Files in `/tmp` may be removed at boot or through cleanup policies. Some systems keep this filesystem in memory.
 
-```sh
-uname -r      # which kernel version is running right now
-ls /boot      # on a real machine: kernel images and boot files
-```
+`/var/tmp` is intended for temporary files that survive reboots, but age-based cleanup may still remove them. Neither location is a substitute for storing work you need to keep.
 
-My rule: look, don't touch. Deleting the wrong file here can leave a machine that won't start. If old kernels are piling up, let the package manager clean them up instead of `rm`-ing things by hand.
+### `/run`: temporary state for the current boot
 
-## The weird ones: `/dev`, `/proc`, `/sys`, `/run`
-
-Here's the part that surprises almost everyone the first time. Some of these folders **aren't really on your disk at all**. They're windows into the running system, presented as files and folders.
-
-That works because of a core Unix idea: *everything is a file*. If you can read from it and write to it, the system lets you treat it like a file.
-
-### `/dev`: devices as files
-
-Your disks, your terminal, your keyboard: they show up here as special files.
+`/run` contains runtime information, including PID files and Unix-domain sockets. A PID file records a process identifier; a socket provides a communication endpoint.
 
 ```sh
-ls /dev | head
-echo "this vanishes" > /dev/null
-head -c 16 /dev/urandom | base64
-```
-
-Three of my favorites:
-
-- `/dev/null`: a black hole. Anything written to it disappears. Handy for silencing noisy output.
-- `/dev/zero`: an endless stream of zeros.
-- `/dev/urandom`: an endless stream of random bytes.
-
-### `/proc`: a live window into the kernel
-
-Nothing in `/proc` is stored on disk. The kernel generates it **at the moment you read it**.
-
-```sh
-cat /proc/uptime            # seconds since boot
-head -n 1 /proc/meminfo     # total memory
-head -n 5 /proc/cpuinfo     # CPU details
-ls /proc | head             # numbers are process IDs
-```
-
-See those numbered folders? Every running process gets one, named after its process ID. That's how tools like `ps` and `top` work: they read `/proc`. They're not magic, they're just reading files.
-
-### `/sys` and `/run`
-
-`/sys` is organized around hardware and drivers: buses, block devices, network cards. Tools read it to learn what your machine is made of.
-
-`/run` holds runtime information (PID files, sockets) that's created fresh on every boot and starts empty each time.
-
-```sh
-ls /sys
 ls /run
 ```
 
-## The quiet ones: `/mnt`, `/media`, `/srv`
+This data is cleared during boot and recreated as services start. That's why `/run` can already contain plenty of entries when you log in.
 
-Three small folders that mostly exist to be empty until you need them:
+The distinction from `/var/lib` matters: a service can recreate a runtime socket, but its saved database needs to remain available after a reboot.
 
-- **`/mnt`**: a conventional spot to mount a disk by hand.
-- **`/media`**: where desktop systems automatically mount USB drives and discs.
-- **`/srv`**: data a server hands out to others, like website files or an FTP area. Some distros use it, some ignore it.
+## `/boot`: startup files
 
-## Four mistakes this map helps you avoid
+`/boot` holds boot-related files, often including installed kernels and initial RAM filesystem images used during startup. EFI files may be on a separate filesystem mounted at `/boot/efi` or another location.
 
-1. **Treating `/tmp` like a safe.** It's a scratch pad. Don't keep anything in there you can't lose.
-2. **Ignoring `/var` until the disk is full.** Check it early. Know where logs go.
-3. **Editing `/etc` without a backup.** One typo in a config file can mean a service that won't start. Copy first.
-4. **Confusing `/` and `/root`.** One is the whole tree, the other is the administrator's home. Be very careful with any command that uses a path starting with a slash, especially anything with `rm`.
+To see the kernel version currently running:
 
-## Your five-minute scavenger hunt
+```sh
+uname -r
+```
 
-Open a terminal (a container or virtual machine is a perfect safe place) and see if you can answer these:
+This reports the running kernel, not a list of files in `/boot`. After an update, a newer kernel may be installed while the machine continues running the older one until a reboot.
 
-1. What distro are you running? (Hint: `/etc`)
-2. Where does the `ls` command actually live? (Hint: `which`)
-3. Which folder under `/var` is the biggest?
-4. How many seconds has your machine been up, according to `/proc`?
-5. What happens if you write something to `/dev/null`, and why is that useful?
+That difference matters when checking whether a kernel update has actually taken effect.
 
-If you can answer those, you can navigate any Linux system.
+## Paths that expose the running system
 
-## The tl;dr table
+Not every file-like entry represents saved content on a disk.
 
-| Folder | One-line job |
-| --- | --- |
-| `/` | The top of the tree |
-| `/home` | Your files and settings |
-| `/root` | The administrator's home |
-| `/etc` | Configuration, mostly plain text |
-| `/usr` | Where most software lives |
-| `/usr/local` | Software you installed yourself |
-| `/opt` | Self-contained third-party apps |
-| `/var` | Logs, state, caches: data that changes |
-| `/tmp` | Scratch space |
-| `/boot` | Kernel and bootloader |
-| `/dev` | Devices as files |
-| `/proc` | Live kernel and process info |
-| `/sys` | Live hardware info |
-| `/run` | Runtime data since boot |
-| `/mnt`, `/media` | Mount points |
-| `/srv` | Data this machine serves |
+Linux also exposes devices and kernel information through filesystem paths. You can inspect these with familiar commands, but the underlying objects behave differently from ordinary documents.
 
-## What's next
+### `/dev`: interfaces to devices
 
-Now that you know the map, the next step is learning to *move around it*. The next post in this series covers the everyday commands (`ls`, `cd`, `find`, `grep` and friends) that let you explore all of this with confidence.
+`/dev` contains device files used to interact with disks, terminals, and other devices:
 
-Got a folder I skipped, or a distro that does something differently? Tell me. I'm still learning too.
+```sh
+ls /dev
+```
+
+Some represent software devices. `/dev/null`, for example, discards data written to it. It is often used to discard unwanted command output.
+
+A disk device entry represents access to a device; it isn't the directory where you browse that disk's documents. For that, you access its mounted filesystem.
+
+Listing `/dev` is one thing. Writing to an unfamiliar disk device is another: it can overwrite data. You don't need to write to any device to explore this article.
+
+### `/proc`: process and kernel information
+
+`/proc` is a virtual filesystem: the kernel supplies the information exposed through its entries rather than storing it as ordinary disk files.
+
+Read the uptime information:
+
+```sh
+cat /proc/uptime
+```
+
+It contains two numbers in seconds. The first is system uptime, including time spent suspended. The second represents accumulated CPU idle time; on a machine with multiple CPUs, it can exceed uptime.
+
+You'll also see numbered directories under `/proc`. These correspond to process IDs and expose information about individual processes. `/proc/meminfo` provides system memory statistics.
+
+This is one reason command-line tools can show so much about a running machine: many read information the kernel exposes here. Some entries also allow changing settings, so don't treat the whole directory as read-only.
+
+### `/sys`: devices, drivers, and their relationships
+
+`/sys` is another virtual filesystem. It exposes kernel objects and attributes, including information about devices and drivers:
+
+```sh
+ls /sys
+```
+
+Where `/proc` is useful for process and system information, `/sys` is especially useful for exploring how the kernel represents devices and their relationships.
+
+Some attributes are writable and can affect device behavior. For this introduction, inspecting directory names is enough.
+
+## `/mnt`, `/media`, and `/srv`: locations with conventions
+
+These directories are easier to understand once mounting and application data make sense:
+
+```sh
+ls /mnt /media /srv
+```
+
+- `/mnt` is traditionally a mount point for a temporarily mounted filesystem. Administrators also commonly create mount points beneath it.
+- `/media` is intended for removable media. Desktop tools may mount USB drives under it or use another location, such as beneath `/run/media`.
+- `/srv` is intended for data provided by services on the machine. A website's content could live here, but the web server's configuration determines its actual location.
+
+These names suggest a purpose; they don't force an application or disk to use that path. If a directory is empty or absent, check how your distribution and applications are configured.
+
+## Use the layout to ask better questions
+
+Imagine troubleshooting an application that won't start.
+
+Its executable may be under `/usr`. Its system configuration may be under `/etc`. Its persistent data may be under `/var/lib`, while logs help explain the failure. A missing socket under `/run` might be a consequence of the service failing to start.
+
+Those paths describe different parts of the same application. You don't need to memorize every subdirectory to start asking useful questions:
+
+The [quick map](#quick-map-where-do-i-look) at the top of this post is the table to keep handy for questions like these.
+
+## Try it on your own system
+
+Pick a command you already use and locate it with `command -v`. Look at `/usr` and `/var`. Read `/proc/uptime` twice and notice what changes.
+
+If your output differs from the videos, investigate the difference. A symbolic link, a different mount point, or a distribution's packaging choice can explain a lot.
+
+The [basic Linux commands post](/posts/basic-linux-commands-for-beginners/) takes the next step: using tools such as `ls`, `cd`, `find`, and `grep` to navigate and inspect what you've found.
+
+## References
+
+- [Filesystem Hierarchy Standard](https://specifications.freedesktop.org/fhs/latest/)
+- [UAPI Group: Linux File System Hierarchy](https://uapi-group.org/specifications/specs/linux_file_system_hierarchy/)
+- [Operating system identification with os-release](https://www.freedesktop.org/software/systemd/man/latest/os-release.html)
+- [Linux kernel documentation: /proc](https://docs.kernel.org/filesystems/proc.html)
+- [Linux kernel documentation: sysfs](https://docs.kernel.org/filesystems/sysfs.html)
