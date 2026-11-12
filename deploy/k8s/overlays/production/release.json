@@ -1,7 +1,9 @@
 {
-  "ref": null,
-  "commit": "",
-  "buildNow": "",
-  "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-  "published": []
+  "ref": "v1.0.0",
+  "commit": "c0a0844a6720f3f6e8ec930c05a9c6c3bee43863",
+  "buildNow": "2026-11-12T18:31:10Z",
+  "digest": "sha256:37ae1e599517e5d31baf6923c569102598107157b9ffb6c8eeda46c668872799",
+  "published": [
+    "welcome"
+  ]
 }
