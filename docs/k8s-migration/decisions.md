@@ -185,3 +185,31 @@ it records what actually happened, including the mistakes. Newest at the bottom.
 - **Both old-site problems are fixed:** `www` now has a certificate (and redirects
   to the apex) and `http://` redirects to `https://`.
 - Pages is left deployed as the fallback; see [cutover.md](cutover.md).
+
+## 2026-11-12: Scheduled blog PRs, with n8n as the clock
+
+- **Problem:** GitHub's hourly cron ran about every 8h, and production only
+  changes on a release, so a scheduled post needed a manual release *and* a
+  punctual cron.
+- **Design:** a PR labelled `blog:scheduled` holds the post until its date. The
+  post's front matter `date` is the only schedule (no second date in the label or
+  PR body to drift). At the date, *Ship scheduled blog PRs* merges it and tags the
+  next patch release.
+- **n8n is only the clock.** It calls `workflow_dispatch` hourly with a
+  fine-grained token that can start and read Actions runs and nothing else, then
+  reports failures to Mattermost. Every decision lives in tested code in this repo
+  (`scripts/blog-schedule.mjs`); the merge, the tag and the deploy use the
+  workflow's own short-lived `GITHUB_TOKEN`.
+- **Automatic releases only for content.** If anything except posts, their
+  assets, docs or the bot's overlay commits changed since the last tag, the PR is
+  merged but not released, and the run fails so a human releases. An automated
+  job must never ship untested code just because a post came due.
+- **Small but real traps:** pushes and tags made with `GITHUB_TOKEN` start no
+  workflows, so the job starts staging and release itself with
+  `workflow_dispatch`; `--match-head-commit` stops a push made after the checks
+  from being merged unchecked; the PR check reads its rules from the base commit,
+  so a PR cannot edit the script that judges it.
+- **A test that read live state broke silently.** The `promote` integration test
+  copied the real overlays into its sandbox and assumed production was empty. The
+  first real release (`v1.0.0`) made it false, and since bot commits skip CI, no
+  run noticed until this branch. Tests now seed their own state.

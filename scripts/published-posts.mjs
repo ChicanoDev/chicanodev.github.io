@@ -23,7 +23,7 @@ export function parseFrontmatter(text) {
   if (!rawDate) throw new Error('front matter has no date');
   const date = new Date(rawDate);
   if (Number.isNaN(date.valueOf())) throw new Error(`unparseable date: ${rawDate}`);
-  return { date, draft: field('draft') === 'true' };
+  return { date, rawDate, draft: field('draft') === 'true' };
 }
 
 function* postFiles(dir, prefix = '') {
