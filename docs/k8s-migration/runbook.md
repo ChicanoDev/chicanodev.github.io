@@ -26,7 +26,7 @@ Nothing below happens automatically. Steps marked **you** need your Cloudflare o
 - **cert-manager's Cloudflare token** (`cloudflare-api-token-secret`, namespace `cert-manager`). Checked read-only on 2026-11-05 (token value never printed):
   - Valid and active, no expiry. It is an account-owned token (`/user/tokens/verify` rejects it; `/accounts/<id>/tokens/verify` accepts it).
   - It can see `chicanodev.com` (one of six zones: aihtx.church, chicanodev.com, cindiebakesstuff.com, cindiemakesstuff.com, dgvigil.dev, gv5tech.com) and read its DNS records.
-  - **Not proven:** that it has `DNS:Edit` here. Proving that needs a write, which I did not do. The first staging certificate is the real test: if `Certificate chicanodev-staging-tls-cert` stays `False` with a Cloudflare permission error (step 7), edit the token in Cloudflare > My Profile/Account > API Tokens and add `Zone:DNS:Edit` for `chicanodev.com`.
+  - It has `DNS:Edit` on `chicanodev.com`: proven when the staging certificate was issued by DNS-01 (2026-11-05), and used once, with explicit approval, to make the production DNS change (2026-11-12, see [cutover.md](cutover.md)).
   - It cannot read zone *settings* (SSL mode, Authenticated Origin Pulls, Always Use HTTPS all returned "Authentication error"). That is appropriate for a DNS-only token, so do not widen it. These three settings can only be confirmed in the dashboard (the first bullet).
 - **Email lives in this zone.** `chicanodev.com` has 3 MX records and DKIM/SPF TXT records, all DNS-only. Staging adds only `staging` A records. The production cutover must change **only** the 4 apex `A` records and the `www` `CNAME`, and leave MX/TXT alone (mail records must stay DNS-only).
 - Repo Settings > Actions > General > Workflow permissions: explicit per-job `permissions:` in the workflows are enough, but an org policy capping the token to read-only would block the digest commit and the image push.
@@ -46,11 +46,14 @@ argocd app get chicanodev-staging        # or: kubectl -n argocd get application
 ```
 Argo creates `chicanodev-staging` (with the `restricted` Pod Security label), the Deployment, Service, PDB, Ingress and middlewares.
 
-**6. Create the basic-auth Secret (you; it is never in Git).** Until it exists Traefik refuses the route (the site is closed, not open):
+**6. Create the basic-auth Secret (you; it is never in Git).** Until it exists Traefik refuses the route and staging answers **404** (the site is closed, not open; Traefik logs `secret 'chicanodev-staging/chicanodev-staging-basic-auth' not found`). The password is read silently, so it stays out of shell history and the process list (zsh):
 ```sh
-htpasswd -nbB <user> '<password>' | \
+read -s "PW?Staging password: "; echo
+printf '%s:%s\n' <user> "$(printf '%s' "$PW" | openssl passwd -apr1 -stdin)" | \
   kubectl -n chicanodev-staging create secret generic chicanodev-staging-basic-auth --from-file=users=/dev/stdin
+unset PW
 ```
+To rotate: `kubectl -n chicanodev-staging delete secret chicanodev-staging-basic-auth` and run the command again. Traefik picks it up without a restart.
 
 **7. Wait for the certificate:**
 ```sh
@@ -76,7 +79,7 @@ kubectl -n chicanodev-staging top pod                                      # com
 |---|---|
 | Deploy to staging | Merge to `main`. Within minutes `/version.json` shows the new `commit`. |
 | Release to production | `scripts/release.sh v1.2.0` (checks staging built OK, asks, tags, pushes). Watch `gh run list --workflow release.yml`. |
-| Publish a post on a date | Write it with the future `date:` (with offset, e.g. `2026-11-09 09:00:00 -0600`) and `draft: false`. Merge. **Cut a release that contains it** before that date. At the date, the hourly `publish.yml` rebuilds the *released* source and it goes live (up to ~1h late plus ~5 min build). Posts merged to `main` but not yet released are never published to production. |
+| Publish a post on a date | Write it with the future `date:` (with offset, e.g. `2026-11-09 09:00:00 -0600`) and `draft: false`. Merge. **Cut a release that contains it** before that date. At the date, the hourly `publish.yml` rebuilds the *released* source and it goes live. **Expect delays of hours, not minutes:** GitHub skips most scheduled runs for this repo (observed: one run about every 8h in November 2026). For a post that must appear on time, run *Publish scheduled posts* by hand after its date. Posts merged to `main` but not yet released are never published to production. |
 | Publish right now / retry | Actions > *Publish scheduled posts* > Run workflow. Safe to run any time; it exits quickly if nothing is due. |
 | See what is live | `curl -s https://chicanodev.com/version.json` (`ref`, `commit`, `buildNow`, `published`). |
 
@@ -148,7 +151,7 @@ kubectl -n cert-manager logs deploy/cert-manager --tail=40    # DNS-01 / Cloudfl
 
 ## Operational responsibilities (what self-hosting adds)
 
-Cert renewal (cert-manager; watch for failures), node and k3s upgrades, Traefik being a single replica, image/base-image updates (pinned digests do not update themselves), GHCR package visibility, the Cloudflare token's scope, and checking after cluster upgrades that NetworkPolicy still enforces (if adopted). GitHub Pages remains deployable as a fallback (`deploy.yml`) until you retire it.
+Cert renewal (cert-manager; watch for failures), node and k3s upgrades, Traefik being a single replica, image/base-image updates (pinned digests do not update themselves), GHCR package visibility, the Cloudflare token's scope, and checking after cluster upgrades that NetworkPolicy still enforces (if adopted). GitHub Pages remains deployable as a fallback (`deploy.yml`) until you retire it; switching back is a DNS change, see [cutover.md](cutover.md#rollback-to-github-pages).
 
 ## Monitoring (deferred)
 

@@ -150,4 +150,38 @@ it records what actually happened, including the mistakes. Newest at the bottom.
   staging certificate will) and the zone's SSL mode / Authenticated Origin Pulls
   (the token is DNS-only and cannot read settings, so that is a dashboard check).
   Also found: MX and DKIM/SPF records share the zone, so the cutover must leave
-  them alone.
+  them alone. *Resolved later:* the staging certificate proved `DNS:Edit`, and
+  Dave confirmed Full (strict) and AOP in the dashboard.
+- **Staging sat broken for a week and nobody noticed.** The basic-auth Secret was
+  never created, so Traefik dropped the route and staging answered 404. Fail-closed
+  did its job (nothing leaked), but "Synced/Healthy" in Argo and 2/2 Ready pods
+  said nothing about whether the site was *reachable*. That is the clearest
+  argument so far for the deferred monitoring: one external HTTP check would have
+  caught it the same day.
+- **GitHub skips scheduled runs.** The hourly `publish.yml` cron actually ran about
+  every 8 hours. "Hourly" in a workflow file is a request, not a promise.
+- **The `http://` gap at cutover.** Pointing proxied DNS at the cluster before
+  turning on Always Use HTTPS made every `http://` URL return 404 for a few
+  minutes (Traefik's port-80 entrypoint has no router for the site), including
+  `chicanodev.github.io` links, which Pages redirects to `http://`. Flip the zone
+  setting first.
+
+## 2026-11-12: Production cutover
+
+- **Order mattered:** release first (`v1.0.0`), then apply the production Argo app,
+  then DNS. Applying the app before a release would have deployed the placeholder
+  digest and sat in `ImagePullBackOff`.
+- **Certificates before DNS.** DNS-01 lets cert-manager issue the apex and `www`
+  certificates while DNS still points at GitHub Pages, so there was no window with
+  a missing certificate.
+- **Proving parity without DNS:** a `kubectl port-forward` to the production Service
+  and a diff against the live Pages site (sitemap URLs, RSS links, a post's
+  `<article>` hash). All identical.
+- **DNS changed through the API with cert-manager's token** (Dave's explicit OK),
+  patching the 4 apex A records and the `www` CNAME in place and saving the
+  before-state first. That token cannot change zone settings, so Always Use HTTPS
+  was a dashboard toggle. Using a cert-manager credential for a one-off is a
+  shortcut, not a pattern; a separate, scoped token would be the clean way.
+- **Both old-site problems are fixed:** `www` now has a certificate (and redirects
+  to the apex) and `http://` redirects to `https://`.
+- Pages is left deployed as the fallback; see [cutover.md](cutover.md).
