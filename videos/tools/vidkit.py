@@ -875,6 +875,8 @@ def _cmd_review(argv):
         for problem in status.qa_problems:
             print(f"   !! {problem}")
         print(f"   notes: {(final_root / f'{eid}.meta.md').relative_to(env.root)}")
+        for line in _publication_lines(final_root, status):
+            print(f"   {line}")
         _print_review(__import__("narration").episode_segments(episode_dir(series, slug)), episode_dir(series, slug))
         print(REVIEW_CHECKLIST + f"When happy: python3 tools/vidkit.py approve {series}/{slug}")
     return 1 if missing else 0
@@ -883,6 +885,7 @@ def _cmd_review(argv):
 def _cmd_approve(argv):
     import approval
     import pipeline
+    import publication
     env = pipeline.docker_env()
     failed = False
     for series, slug in _select(_names(argv)):
@@ -893,24 +896,200 @@ def _cmd_approve(argv):
             print(f"!! {err}")
             failed = True
             continue
-        print(f"approved {eid} by {status.approved_by}. It is now in the publish backlog.")
+        waiting = [f"{r.platform}/{r.fmt}" for r in publication.pending(env.root / "out" / "final") if r.status.eid == eid]
+        if waiting:
+            print(f"approved {eid} by {status.approved_by}. Pending upload: {', '.join(waiting)}.")
+        else:
+            print(f"approved {eid} by {status.approved_by}. This exact export is already published for every "
+                  "destination; nothing waits for upload.")
     return 1 if failed else 0
 
 
+class UsageError(Exception):
+    """Bad command line for a strictly parsed command (exit 2)."""
+
+
+def _strict(argv, values):
+    """Strict parser for publish/status/backlog: (positionals, {flag: value}). Unknown, repeated and
+    value-less flags are errors, and a flag's value is never mistaken for an episode selector."""
+    positionals, opts, i = [], {}, 0
+    while i < len(argv):
+        arg = argv[i]
+        if not arg.startswith("-"):
+            positionals.append(arg)
+            i += 1
+            continue
+        if arg not in values:
+            raise UsageError(f"unknown option {arg}. Options: {', '.join(values) or 'none'}")
+        if arg in opts:
+            raise UsageError(f"{arg} given more than once")
+        if i + 1 >= len(argv) or argv[i + 1].startswith("--"):
+            raise UsageError(f"{arg} needs a value")
+        opts[arg] = argv[i + 1]
+        i += 2
+    return positionals, opts
+
+
+def _filters(opts):
+    import publication
+    platform, fmt = opts.get("--platform"), opts.get("--format")
+    if platform is not None:
+        publication.check_platform(platform)
+    if fmt is not None:
+        publication.check_format(fmt)
+    return platform, fmt
+
+
+def _strict_command(fn):
+    """Shared error handling for the strictly parsed publication commands."""
+    def run(argv):
+        import approval
+        import publication
+        try:
+            return fn(argv)
+        except UsageError as err:
+            print(f"!! {err}")
+            return 2
+        except publication.PublishError as err:
+            print(f"!! {err}")
+            return err.code
+        except approval.CorruptStatus as err:
+            print(f"!! {err}")
+            return 1
+    run.__doc__ = fn.__doc__
+    return run
+
+
+STATE_LABELS = {"published-current": "current export published", "changed-since-publish": "changed since publish",
+                "local-missing": "local export missing", "unpublished": "not published"}
+
+
+def _publication_lines(final_root, status, platforms=None, formats=None):
+    """One line per destination with history (or a 'none' line). Labels compare local files only."""
+    import publication
+    platforms = platforms or publication.PLATFORMS
+    formats = formats or publication.FORMATS
+    lines = []
+    for fmt in formats:
+        for platform in platforms:
+            label, records = publication.destination_state(final_root, status, platform, fmt)
+            if not records and fmt not in status.files:
+                continue
+            lines.append(f"{platform}/{fmt}: {STATE_LABELS[label]}")
+            for r in records:
+                lines.append(f"    published {r['published_at']} by {r['published_by']}"
+                             + (f"  {r['url']}" if r["url"] else "  (no URL)"))
+    return lines or ["publications: none recorded"]
+
+
+@_strict_command
 def _cmd_backlog(argv):
-    import approval
     import pipeline
+    import publication
+    positionals, opts = _strict(argv, ("--platform", "--format"))
+    if positionals:
+        raise UsageError("backlog takes no episode; filter with --platform and --format")
+    platform, fmt = _filters(opts)
     env = pipeline.docker_env()
-    items = approval.backlog(env.root / "out" / "final")
-    if not items:
+    report = publication.backlog_report(env.root / "out" / "final", platform, fmt)
+    dest = " ".join(x for x in (platform, fmt) if x) or "any destination"
+    if report.reason == "no-approved":
         print("Nothing approved yet. Build, review, then approve an episode.")
         return 0
-    print("Approved and ready to publish manually (YouTube Studio / Meta):")
-    for st in items:
-        print(f"  {st.eid}  approved {st.approved_at} by {st.approved_by}")
-        for label, info in st.files.items():
-            print(f"      {label}: out/final/{info['path']}")
-        print(f"      notes: out/final/{st.eid}.meta.md")
+    if report.reason == "no-match":
+        print(f"No approved {fmt + ' ' if fmt else ''}exports match the filters ({dest}).")
+        return 0
+    if report.reason == "all-published":
+        print(f"All matching approved exports are already published ({dest}). Nothing pending upload.")
+        return 0
+    print("Approved and pending manual upload (YouTube Studio / Meta). After uploading, record it with publish:")
+    seen = None
+    for row in report.rows:
+        st = row.status
+        if st.eid != seen:
+            if seen:
+                print(f"      notes: out/final/{seen}.meta.md")
+            print(f"  {st.eid}  approved {st.approved_at} by {st.approved_by}")
+            seen = st.eid
+        print(f"      {row.platform:9} {row.fmt:10} out/final/{row.path}")
+    print(f"      notes: out/final/{seen}.meta.md")
+    return 0
+
+
+def _episode_name(series, slug):
+    return f"{series}/{slug}"
+
+
+@_strict_command
+def _cmd_publish(argv):
+    """Record (not perform) a manual upload of one approved episode export."""
+    import pipeline
+    import publication
+    positionals, opts = _strict(argv, ("--platform", "--format", "--url", "--at", "--by"))
+    if len(positionals) != 1:
+        raise UsageError("publish needs exactly one episode, e.g. publish linux-fs/02-where-programs-live "
+                         "--platform youtube")
+    target = positionals[0]
+    if target in {s for s, _ in EPISODES}:
+        raise UsageError(f"{target} is a series. publish records one episode at a time; name one episode.")
+    episodes = _select([target])
+    if len(episodes) != 1:
+        raise UsageError(f"unknown episode: {target}. Try one like linux-fs/01-no-c-drive." if not episodes else
+                         f"{target} matches several episodes; name exactly one episode.")
+    if "--platform" not in opts:
+        raise UsageError("publish needs --platform youtube or --platform instagram")
+    series, slug = episodes[0]
+    eid = episode_id(series, slug)
+    env = pipeline.docker_env()
+    entry, created = publication.record(
+        env.root / "out" / "final", eid, opts["--platform"], opts.get("--format", "vertical"),
+        by=opts.get("--by"), url=opts.get("--url"), at=opts.get("--at"),
+        default_by=lambda: _who([]), name=_episode_name(series, slug))
+    head = "Recorded" if created else "Existing record found, nothing changed:"
+    print(f"{head} {_episode_name(series, slug)} on {entry['platform']} ({entry['format']})")
+    print(f"   published {entry['published_at']} by {entry['published_by']}")
+    print(f"   url: {entry['url'] or '(none)'}")
+    print("   This only recorded a manual publication; nothing was uploaded.")
+    return 0
+
+
+@_strict_command
+def _cmd_status(argv):
+    """Read-only production and publication overview."""
+    import approval
+    import pipeline
+    import publication
+    positionals, opts = _strict(argv, ("--platform", "--format"))
+    if len(positionals) > 1:
+        raise UsageError("status takes at most one episode or series")
+    platform, fmt = _filters(opts)
+    episodes = _select(positionals)
+    if positionals and not episodes:
+        raise UsageError(f"unknown episode or series: {positionals[0]}")
+    platforms = (platform,) if platform else publication.PLATFORMS
+    formats = (fmt,) if fmt else publication.FORMATS
+    final_root = pipeline.docker_env().root / "out" / "final"
+    series_names = list(dict.fromkeys(s for s, _ in episodes))
+    for series in series_names:
+        print(f"=== {series}")
+        for s, slug in (e for e in episodes if e[0] == series):
+            st = approval.current(final_root, episode_id(s, slug))
+            if st is None:
+                print(f"  {_episode_name(s, slug)}: not built")
+                continue
+            approved = f" by {st.approved_by} at {st.approved_at}" if st.state == "approved" else ""
+            print(f"  {_episode_name(s, slug)}: {st.state}{approved}  formats: {', '.join(st.files) or '-'}")
+            for line in _publication_lines(final_root, st, platforms, formats):
+                print(f"      {line}")
+        everyone = [episode_id(s, n) for s, n in EPISODES if s == series]
+        print(f"  series progress ({len(everyone)} registered episodes):")
+        for f in formats:
+            for p in platforms:
+                ever, now, n = publication.series_progress(final_root, everyone, p, f)
+                done = "  complete" if now == n else ""
+                print(f"    {p}/{f}  Ever published: {ever}/{n} episodes  "
+                      f"Current exports published: {now}/{n} episodes{done}")
+        print("  compiled long video: not tracked; publishing episodes does not mark it published.")
     return 0
 
 
@@ -977,7 +1156,7 @@ def _cmd_record(argv):
     except recorder.RecorderError as err:
         print(f"!! {err}")
         return 1
-    session = studio.Session(segments, store, backend, studio.TerminalUI(), title=title, episode=f"{series}/{slug}",
+    session = studio.Session(segments, store, backend, studio.make_ui(), title=title, episode=f"{series}/{slug}",
                              device=device, autoplay="--no-autoplay" not in argv, only=_flag(argv, "--segment"))
     return session.run()
 
@@ -988,11 +1167,12 @@ COMMANDS = {"record": _cmd_record, "lint": _cmd_lint, "srt": _cmd_srt, "render":
             "segments": _cmd_segments, "check-audio": _cmd_check_audio,
             "transcribe": _cmd_transcribe, "transcript": _cmd_transcript,
             "build": _cmd_build, "batch-build": _cmd_batch_build, "review": _cmd_review,
-            "approve": _cmd_approve, "backlog": _cmd_backlog}
+            "approve": _cmd_approve, "backlog": _cmd_backlog, "publish": _cmd_publish, "status": _cmd_status}
 
 
 NEEDS_VENV = {"record", "segments", "check-audio", "transcribe", "transcript", "build", "batch-build", "review",
-              "approve", "backlog", "compile"}
+              "approve", "backlog", "publish", "status", "compile"}
+STRICT = {"publish", "status", "backlog"}  # parse their own arguments; skip the global selector check
 SETUP = "uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt"
 
 
@@ -1032,7 +1212,7 @@ def main(argv=None):
     early = _ensure_env(argv[0])
     if early is not None:
         return early
-    names = _names(argv[1:])
+    names = [] if argv[0] in STRICT else _names(argv[1:])
     if names and not _select(names):
         print(f"unknown episode or series: {' '.join(names)}. Try one like linux-fs/01-no-c-drive or linux-fs.")
         return 2

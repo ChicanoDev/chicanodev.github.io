@@ -5,3 +5,5 @@ numpy>=2,<3
 faster-whisper==1.2.1
 av==16.1.0  # 19.x breaks faster-whisper 1.2.1 (av.open metadata_errors)
 sounddevice==0.5.6  # mic capture/playback; macOS wheel bundles PortAudio
+rich==15.0.0  # persistent recording screen (studio_screen.py, LiveUI)
+pyte==0.8.2  # tests only: virtual terminal to assert what is on screen

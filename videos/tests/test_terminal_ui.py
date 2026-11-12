@@ -37,6 +37,7 @@ def drive(folder, steps, timeout=20):
     env = dict(os.environ, TERM="xterm", NO_COLOR="1", COLUMNS="80")
     pid, fd = pty.fork()
     if pid == 0:
+        signal.signal(signal.SIGINT, signal.SIG_DFL)  # a background-launched pytest passes SIGINT=ignored down
         os.execve(sys.executable, [sys.executable, "-c", CHILD, str(folder)], env)
     seen = ""
     try:

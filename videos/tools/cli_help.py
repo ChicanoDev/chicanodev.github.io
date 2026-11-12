@@ -106,13 +106,36 @@ COMMAND_INFO = {
         options=(("--open", "Open the files in the default player"),), examples=_ex("review", " --open")),
     "approve": Info(
         GROUPS[2], "Mark a reviewed build as approved",
-        "Approves the finished video (not a narration take) and adds it to the publish backlog. Any later change "
-        "voids the approval.",
+        "Approves the finished video (not a narration take). Its exports then show in backlog for each platform "
+        "they have not been published to. Any later change voids the approval (publication history is kept).",
         options=(("--by NAME", "Name to record (default: git user.name)"),), examples=_ex("approve")),
     "backlog": Info(
-        GROUPS[2], "Show video production status",
-        "Lists approved videos ready to publish by hand, with file paths.",
-        args=(), examples=(f"{PROG} backlog",)),
+        GROUPS[2], "List approved exports waiting for upload",
+        "Lists approved, intact exports not yet recorded as published, one line per platform and format, with "
+        "file paths. Upload by hand, then record it with publish.",
+        args=(), options=(("--platform P", "youtube or instagram (default: both)"),
+                          ("--format F", "vertical or horizontal (default: every built format)")),
+        examples=(f"{PROG} backlog", f"{PROG} backlog --platform youtube")),
+    "publish": Info(
+        GROUPS[2], "Record a manual upload you already did",
+        "Records that you uploaded one approved episode export. It does not upload anything. Each platform and "
+        "format is a separate record, tied to the exact file bytes. Running it again for the same file is a "
+        "no-op; giving a different --url/--at/--by for an existing record is refused. Rebuilds never erase "
+        "history; a changed export needs a fresh approval before a new record.",
+        options=(("--platform P", "Required: youtube or instagram"),
+                 ("--format F", "vertical (default) or horizontal; not both"),
+                 ("--url URL", "Optional link to the post (http/https)"),
+                 ("--at TIME", "When it went live, with timezone, e.g. 2026-11-04T14:00:00-06:00 (default: now)"),
+                 ("--by NAME", "Who published it (default: git user.name)")),
+        examples=_ex("publish", " --platform youtube --url https://www.youtube.com/shorts/ID")
+        + _ex("publish", " --platform instagram")),
+    "status": Info(
+        GROUPS[2], "Show production and publication status",
+        "Read-only overview: build/approval state, formats, every publication with time and URL, and per-series "
+        "progress (ever published vs current exports published). Compiled long videos are not tracked yet.",
+        args=(("episode", "Episode or series (default: everything)"),),
+        options=(("--platform P", "youtube or instagram"), ("--format F", "vertical or horizontal")),
+        examples=(f"{PROG} status", f"{PROG} status linux-fs --platform youtube"), optional_episode=True),
     "compile": Info(
         GROUPS[3], "Combine episodes into a longer video",
         "Joins a series' episodes with title cards into one long video and chapter timestamps.",
@@ -137,7 +160,9 @@ HOME_EXAMPLES = (
     ("Record an episode", f"record {EP}"),
     ("Build a finished video", f"build {EP} --format both"),
     ("Review the result", f"review {EP}"),
-    ("Show all episodes", "backlog"),
+    ("See what to upload", "backlog"),
+    ("Record an upload", f"publish {EP} --platform youtube"),
+    ("Show progress", "status linux-fs"),
 )
 
 
@@ -160,7 +185,7 @@ def _plain_rows(rows, w, indent="  ", gap=2, label_w=None):
 def main_help():
     w = cli_ui.width()
     out = [cli_ui.panel(["", "CHICANODEV VIDKIT", "Video Production Toolkit", "",
-                         "Record > Transcribe > Build > Review > Publish", ""], w=w, center=True), ""]
+                         "Record > Build > Review > Approve > Upload > Publish", ""], w=w, center=True), ""]
     for group in GROUPS:
         out.append(cli_ui.heading(group))
         out += _plain_rows([(n, i.summary) for n, i in COMMAND_INFO.items() if i.group == group], w,

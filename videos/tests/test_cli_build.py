@@ -141,3 +141,155 @@ class TestBuildNeedsAName:
         env, folder, vhs, engine = cli
         assert vidkit.main(["build"]) == 2
         assert "episode" in capsys.readouterr().out and vhs.calls == []
+
+
+URL = "https://www.youtube.com/shorts/EXAMPLE"
+
+
+class TestPublishCommand:
+    def ready(self, cli, fmt="vertical"):
+        vidkit.main(["build", "demo/01-ep", "--format", fmt])
+        vidkit.main(["approve", "demo/01-ep", "--by", "Reviewer"])
+
+    def status_file(self, cli):
+        return final_root(cli[0]) / "demo-01-ep.status.json"
+
+    def test_publish_then_backlog_drops_youtube_keeps_instagram(self, cli, capsys):
+        self.ready(cli)
+        capsys.readouterr()
+        assert vidkit.main(["publish", "demo/01-ep", "--platform", "youtube", "--url", URL, "--by", "Dave"]) == 0
+        out = capsys.readouterr().out
+        assert "demo/01-ep" in out and "youtube" in out and "vertical" in out and URL in out
+        assert "nothing was uploaded" in out.lower()
+        assert vidkit.main(["backlog", "--platform", "youtube"]) == 0
+        assert "already published" in capsys.readouterr().out.lower()
+        assert vidkit.main(["backlog"]) == 0
+        out = capsys.readouterr().out
+        assert "instagram" in out and "vertical/demo-01-ep.mp4" in out and "youtube" not in out.split("instagram")[0].split("demo-01-ep", 1)[1]
+
+    def test_status_shows_history_and_series_counts(self, cli, capsys, monkeypatch):
+        monkeypatch.setattr(vidkit, "EPISODES", [("demo", "01-ep"), ("demo", "02-todo")])
+        self.ready(cli)
+        vidkit.main(["publish", "demo/01-ep", "--platform", "youtube", "--url", URL, "--at", "2026-11-04T20:00:00Z"])
+        capsys.readouterr()
+        assert vidkit.main(["status", "demo"]) == 0
+        out = capsys.readouterr().out
+        assert "demo/01-ep" in out and "approved" in out and URL in out and "2026-11-04T20:00:00+00:00" in out
+        assert "demo/02-todo" in out and "not built" in out
+        assert "Ever published: 1/2 episodes" in out and "Current exports published: 1/2 episodes" in out
+        assert "compiled" in out.lower()
+        assert vidkit.main(["status", "demo", "--platform", "instagram", "--format", "vertical"]) == 0
+        out = capsys.readouterr().out
+        assert "Ever published: 0/2 episodes" in out and "youtube" not in out
+
+    def test_duplicate_is_noop_even_if_git_name_changed(self, cli, capsys, monkeypatch):
+        self.ready(cli)
+        monkeypatch.setattr(vidkit, "_who", lambda argv: "Old Name")
+        vidkit.main(["publish", "demo/01-ep", "--platform", "youtube"])
+        before = self.status_file(cli).read_bytes()
+        monkeypatch.setattr(vidkit, "_who", lambda argv: "New Name")
+        capsys.readouterr()
+        assert vidkit.main(["publish", "demo/01-ep", "--platform", "youtube"]) == 0
+        assert "existing record" in capsys.readouterr().out.lower()
+        assert self.status_file(cli).read_bytes() == before
+
+    def test_conflicting_url_exits_1_without_write(self, cli, capsys):
+        self.ready(cli)
+        vidkit.main(["publish", "demo/01-ep", "--platform", "youtube", "--url", URL])
+        before = self.status_file(cli).read_bytes()
+        assert vidkit.main(["publish", "demo/01-ep", "--platform", "youtube", "--url", "https://x.example/y"]) == 1
+        assert self.status_file(cli).read_bytes() == before
+
+    def test_unapproved_exits_1(self, cli, capsys):
+        vidkit.main(["build", "demo/01-ep", "--format", "vertical"])
+        before = self.status_file(cli).read_bytes()
+        assert vidkit.main(["publish", "demo/01-ep", "--platform", "youtube"]) == 1
+        assert "approve" in capsys.readouterr().out
+        assert self.status_file(cli).read_bytes() == before
+
+    @pytest.mark.parametrize("argv", [
+        ["demo/01-ep"],                                                   # no platform
+        ["demo/01-ep", "--platform"],                                     # missing value
+        ["demo/01-ep", "--platform", "--url", URL],                       # flag as value
+        ["demo/01-ep", "--platform", "youtube", "--platform", "instagram"],
+        ["demo/01-ep", "--platform", "tiktok"],
+        ["demo/01-ep", "--platform", "youtube", "--format", "both"],
+        ["demo/01-ep", "--platform", "youtube", "--format", "square"],
+        ["demo/01-ep", "--platform", "youtube", "--url", "not a url"],
+        ["demo/01-ep", "--platform", "youtube", "--url", ""],
+        ["demo/01-ep", "--platform", "youtube", "--at", "2026-11-04"],
+        ["demo/01-ep", "--platform", "youtube", "--at", "2099-01-01T00:00:00Z"],
+        ["demo/01-ep", "--platform", "youtube", "--force"],               # unknown option
+        ["demo", "--platform", "youtube"],                                # series selector
+        ["demo/01-ep", "01-ep", "--platform", "youtube"],                 # multiple selectors
+        ["nope/99", "--platform", "youtube"],
+        ["--platform", "youtube"],                                        # no selector
+    ])
+    def test_usage_errors_exit_2_without_write(self, cli, capsys, argv):
+        self.ready(cli)
+        before = self.status_file(cli).read_bytes()
+        assert vidkit.main(["publish", *argv]) == 2
+        assert self.status_file(cli).read_bytes() == before
+
+    def test_series_with_one_episode_still_rejected(self, cli, capsys):
+        self.ready(cli)
+        assert vidkit.main(["publish", "demo", "--platform", "youtube"]) == 2
+        assert "one episode" in capsys.readouterr().out
+
+    def test_corrupt_status_exits_1_and_keeps_file(self, cli, capsys):
+        self.ready(cli)
+        self.status_file(cli).write_text("{broken")
+        assert vidkit.main(["publish", "demo/01-ep", "--platform", "youtube"]) == 1
+        assert "demo-01-ep.status.json" in capsys.readouterr().out
+        assert self.status_file(cli).read_text() == "{broken"
+
+
+class TestStrictBacklogAndStatus:
+    @pytest.mark.parametrize("cmd", ["backlog", "status"])
+    @pytest.mark.parametrize("argv", [["--platform"], ["--platform", "tiktok"], ["--format", "both"],
+                                      ["--platform", "youtube", "--platform", "youtube"], ["--bogus"]])
+    def test_bad_filters_exit_2(self, cli, capsys, cmd, argv):
+        assert vidkit.main([cmd, *argv]) == 2
+
+    def test_filter_value_is_not_an_episode_selector(self, cli, capsys):
+        assert vidkit.main(["backlog", "--platform", "youtube"]) == 0
+        assert vidkit.main(["status", "--platform", "youtube", "--format", "vertical"]) == 0
+
+    def test_backlog_takes_no_selector(self, cli, capsys):
+        assert vidkit.main(["backlog", "demo"]) == 2
+
+    def test_status_rejects_two_selectors_and_unknown(self, cli, capsys):
+        assert vidkit.main(["status", "demo", "demo/01-ep"]) == 2
+        assert vidkit.main(["status", "nope"]) == 2
+
+    def test_backlog_empty_reasons(self, cli, capsys):
+        assert vidkit.main(["backlog"]) == 0
+        assert "nothing approved" in capsys.readouterr().out.lower()
+        vidkit.main(["build", "demo/01-ep", "--format", "vertical"])
+        vidkit.main(["approve", "demo/01-ep", "--by", "R"])
+        capsys.readouterr()
+        assert vidkit.main(["backlog", "--format", "horizontal"]) == 0
+        assert "no approved horizontal exports" in capsys.readouterr().out.lower()
+
+
+class TestReviewApproveMention:
+    def test_reapprove_of_published_identical_does_not_promise_backlog(self, cli, capsys):
+        vidkit.main(["build", "demo/01-ep", "--format", "vertical"])
+        vidkit.main(["approve", "demo/01-ep", "--by", "R"])
+        assert "pending upload" in capsys.readouterr().out.lower()
+        for p in ("youtube", "instagram"):
+            vidkit.main(["publish", "demo/01-ep", "--platform", p])
+        vidkit.main(["build", "demo/01-ep", "--format", "vertical", "--force"])
+        capsys.readouterr()
+        vidkit.main(["approve", "demo/01-ep", "--by", "R"])
+        out = capsys.readouterr().out.lower()
+        assert "already published" in out and "pending upload" not in out
+
+    def test_review_shows_publication_summary(self, cli, capsys):
+        vidkit.main(["build", "demo/01-ep", "--format", "vertical"])
+        vidkit.main(["approve", "demo/01-ep", "--by", "R"])
+        vidkit.main(["publish", "demo/01-ep", "--platform", "youtube", "--url", URL])
+        capsys.readouterr()
+        vidkit.main(["review", "demo/01-ep"])
+        out = capsys.readouterr().out
+        assert "youtube" in out and URL in out and "published" in out.lower()

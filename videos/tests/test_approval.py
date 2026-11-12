@@ -104,3 +104,114 @@ class TestBacklog:
 
     def test_current_of_unknown_is_none(self, tmp_path):
         assert approval.current(tmp_path, "nope") is None
+
+
+PUB = {"platform": "youtube", "format": "vertical", "published_at": "2026-11-04T20:00:00+00:00",
+       "recorded_at": "2026-11-04T20:05:00+00:00", "published_by": "Dave", "url": None, "content_key": "k1",
+       "artifact_path": "vertical/ep.mp4", "artifact_sha256": "abc", "approved_at": NOW, "approved_by": "Dave"}
+
+
+def with_history(tmp_path, files, entries=(PUB,)):
+    built(tmp_path, files)
+    p = tmp_path / "ep.status.json"
+    data = json.loads(p.read_text())
+    data["publications"] = [dict(e) if isinstance(e, dict) else e for e in entries]
+    p.write_text(json.dumps(data))
+    return p
+
+
+class TestPublicationHistory:
+    def test_legacy_status_without_publications_loads_empty(self, tmp_path, files):
+        built(tmp_path, files)
+        p = tmp_path / "ep.status.json"
+        data = json.loads(p.read_text())
+        data.pop("publications", None)
+        p.write_text(json.dumps(data))
+        assert approval.current(tmp_path, "ep").publications == []
+
+    def test_reads_do_not_rewrite_legacy_file(self, tmp_path, files):
+        built(tmp_path, files)
+        p = tmp_path / "ep.status.json"
+        data = json.loads(p.read_text())
+        data.pop("publications", None)
+        p.write_text(json.dumps(data))
+        before = p.read_bytes()
+        approval.current(tmp_path, "ep")
+        approval.backlog(tmp_path)
+        assert p.read_bytes() == before
+
+    @pytest.mark.parametrize("change", ["same", "changed", "failed"])
+    def test_rebuilds_keep_history(self, tmp_path, files, change):
+        with_history(tmp_path, files)
+        if change == "changed":
+            files["vertical"].write_bytes(b"video-v2")
+        st = built(tmp_path, files, key="k1" if change == "same" else "k2", qa=["bad"] if change == "failed" else ())
+        assert st.publications == [PUB]
+        assert approval.current(tmp_path, "ep").publications == [PUB]
+
+    def test_approve_keeps_history(self, tmp_path, files):
+        with_history(tmp_path, files)
+        assert approval.approve(tmp_path, "ep", "Dave", now=NOW).publications == [PUB]
+
+
+class TestCorruptStatus:
+    def assert_corrupt(self, tmp_path, p):
+        before = p.read_bytes()
+        with pytest.raises(approval.CorruptStatus) as err:
+            approval.current(tmp_path, "ep")
+        assert "ep.status.json" in str(err.value)
+        assert p.read_bytes() == before
+
+    def test_invalid_json(self, tmp_path):
+        p = tmp_path / "ep.status.json"
+        p.write_text("{not json")
+        self.assert_corrupt(tmp_path, p)
+
+    def test_unknown_field(self, tmp_path, files):
+        p = with_history(tmp_path, files, ())
+        data = json.loads(p.read_text())
+        data["surprise"] = 1
+        p.write_text(json.dumps(data))
+        self.assert_corrupt(tmp_path, p)
+
+    def test_publications_not_a_list(self, tmp_path, files):
+        p = with_history(tmp_path, files, ())
+        data = json.loads(p.read_text())
+        data["publications"] = {"x": 1}
+        p.write_text(json.dumps(data))
+        self.assert_corrupt(tmp_path, p)
+
+    @pytest.mark.parametrize("bad", [
+        {"platform": None}, {"platform": "tiktok"}, {"format": "both"}, {"published_at": "yesterday"},
+        {"published_at": "2026-11-04T20:00:00"}, {"recorded_at": 5}, {"url": 7}, {"artifact_sha256": ""},
+        {"published_by": None}, "missing:artifact_path", "not-a-dict"])
+    def test_invalid_record(self, tmp_path, files, bad):
+        if bad == "not-a-dict":
+            entry = "oops"
+        elif isinstance(bad, str):
+            entry = {k: v for k, v in PUB.items() if k != bad.split(":")[1]}
+        else:
+            entry = {**PUB, **bad}
+        p = with_history(tmp_path, files, [entry])
+        self.assert_corrupt(tmp_path, p)
+
+    def test_corrupt_history_is_not_replaced_by_rebuild(self, tmp_path, files):
+        p = tmp_path / "ep.status.json"
+        p.write_text("{not json")
+        with pytest.raises(approval.CorruptStatus):
+            built(tmp_path, files)
+        assert p.read_text() == "{not json"
+
+
+class TestAtomicWrite:
+    def test_failed_replace_keeps_original_and_cleans_temp(self, tmp_path, files, monkeypatch):
+        p = with_history(tmp_path, files)
+        before = p.read_bytes()
+
+        def boom(*a):
+            raise OSError("disk full")
+        monkeypatch.setattr(approval.os, "replace", boom)
+        with pytest.raises(OSError):
+            approval.approve(tmp_path, "ep", "Dave", now=NOW)
+        assert p.read_bytes() == before
+        assert sorted(x.name for x in tmp_path.iterdir()) == ["ep.status.json", "final"]
