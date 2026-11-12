@@ -92,6 +92,8 @@ Repository settings that must stay as they are:
 
 A post is public only if `draft: false` **and** its `date` (an instant, offset included) is not in the future at build time. Write future-dated posts normally and keep `draft: false`; an hourly workflow rebuilds when one becomes due. `BUILD_NOW=<ISO instant>` pins the cutoff for a build, and `node scripts/published-posts.mjs --now <ISO instant>` lists what would be public. `astro dev` still shows drafts and scheduled posts so you can preview them.
 
+To publish a post on a date, open a PR with just the post (and its images), set its future `date` and `draft: false`, and add the label **`blog:scheduled`**. A check comments when it will publish. At that time an hourly job (started by n8n) merges the PR and releases it to production. Details: [runbook](docs/k8s-migration/runbook.md#day-to-day).
+
 ## Kubernetes deployment
 
 Since 2026-11-12, `chicanodev.com` is served from the k3s cluster: an unprivileged nginx container deployed by Argo CD, behind Cloudflare. Staging follows `main`; production follows `vX.Y.Z` tags (`scripts/release.sh`). See [`docs/k8s-migration/`](docs/k8s-migration/): [architecture](docs/k8s-migration/architecture.md), [runbook](docs/k8s-migration/runbook.md) (bring-up, rollback, troubleshooting), [cutover](docs/k8s-migration/cutover.md), [decisions](docs/k8s-migration/decisions.md), [NetworkPolicy findings](docs/k8s-migration/networkpolicy.md).

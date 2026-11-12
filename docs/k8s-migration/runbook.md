@@ -79,7 +79,8 @@ kubectl -n chicanodev-staging top pod                                      # com
 |---|---|
 | Deploy to staging | Merge to `main`. Within minutes `/version.json` shows the new `commit`. |
 | Release to production | `scripts/release.sh v1.2.0` (checks staging built OK, asks, tags, pushes). Watch `gh run list --workflow release.yml`. |
-| Publish a post on a date | Write it with the future `date:` (with offset, e.g. `2026-11-09 09:00:00 -0600`) and `draft: false`. Merge. **Cut a release that contains it** before that date. At the date, the hourly `publish.yml` rebuilds the *released* source and it goes live. **Expect delays of hours, not minutes:** GitHub skips most scheduled runs for this repo (observed: one run about every 8h in November 2026). For a post that must appear on time, run *Publish scheduled posts* by hand after its date. Posts merged to `main` but not yet released are never published to production. |
+| **Schedule a post (preferred)** | Open a PR that adds the post (plus any `public/images/` or `public/recordings/` files, nothing else), with its future `date:` including the offset and `draft: false`. Add the label **`blog:scheduled`**. The *Scheduled blog PR check* comments "Publishes …" with the time. When the date passes, n8n's hourly run of *Ship scheduled blog PRs* merges it, tags the next patch release (e.g. `v1.0.1`) and starts *Release*: live within about an hour plus ~10 min of builds. To cancel, remove the label. |
+| Publish a post on a date (manual) | Write it with the future `date:` (with offset, e.g. `2026-11-09 09:00:00 -0600`) and `draft: false`. Merge. **Cut a release that contains it** before that date. At the date, the hourly `publish.yml` rebuilds the *released* source and it goes live. **Expect delays of hours, not minutes:** GitHub skips most scheduled runs for this repo (observed: one run about every 8h in November 2026). For a post that must appear on time, run *Publish scheduled posts* by hand after its date. Posts merged to `main` but not yet released are never published to production. |
 | Publish right now / retry | Actions > *Publish scheduled posts* > Run workflow. Safe to run any time; it exits quickly if nothing is due. |
 | See what is live | `curl -s https://chicanodev.com/version.json` (`ref`, `commit`, `buildNow`, `published`). |
 
@@ -137,6 +138,12 @@ kubectl -n cert-manager logs deploy/cert-manager --tail=40    # DNS-01 / Cloudfl
 2. Is `draft: false` and the date's offset right? `node scripts/published-posts.mjs --now 2026-11-09T15:00:00Z` prints what would be public at that instant.
 3. `gh run list --workflow publish.yml` and open the latest run's summary: `due=`, `reason=`.
 4. A delayed cron run is normal (GitHub may start it late). Re-run it by hand.
+
+**A `blog:scheduled` PR did not ship**
+1. Open the latest *Ship scheduled blog PRs* run summary (`gh run list --workflow blog-ship.yml`). It prints one line per labelled PR: *scheduled for …*, *waiting, checks are not all green*, *not a content-only PR*, *invalid post*, or *merged*.
+2. **"Not released automatically"** means the PR merged but `main` has code or config since the last tag. Check staging, then run `scripts/release.sh`. The post stays hidden in production until you do.
+3. No run at all in the last hour: check the n8n workflow *ChicanoDev Blog Scheduler* at flow.dgvigil.dev (executions, credential). Its PAT expires yearly. You can always start *Ship scheduled blog PRs* by hand; it is safe to run any time.
+4. Only PRs authored by `dgvigil` from this repository are merged automatically.
 
 **The promote step failed to push to main**: a ruleset is blocking the Actions bot. `main` currently has no branch protection or rulesets. If you add one, the bot (`github-actions[bot]`) needs a bypass, and the change must be your explicit decision.
 
