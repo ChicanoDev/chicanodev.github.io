@@ -1,0 +1,105 @@
+name: Scheduled blog PR check
+
+# For PRs labelled `blog:scheduled`: proves the PR is blog content only (posts
+# plus public/images or public/recordings), that no post is a draft and that
+# every date carries a UTC offset, then keeps one comment on the PR saying when
+# it will publish. blog-ship.yml merges it when that time comes.
+# Without the label the job is skipped.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions: {}
+
+concurrency:
+  group: blog-pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: contains(github.event.pull_request.labels.*.name, 'blog:scheduled')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      due-at: ${{ steps.check.outputs.due-at }}
+      due: ${{ steps.check.outputs.due }}
+    steps:
+      # The rules come from the BASE commit, never from the PR, so a PR cannot
+      # edit the script that judges it. Only the PR's files are read, as data.
+      - name: Checkout the base (rules)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Checkout the PR (data)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Validate
+        id: check
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          classes=$(git -C pr diff --name-only "$BASE_SHA...$HEAD_SHA" | node scripts/blog-schedule.mjs classify)
+          if [ "$(jq '.disallowed | length' <<<"$classes")" -gt 0 ]; then
+            echo "::error::A blog:scheduled PR may only change posts and public/images or public/recordings. Also changed: $(jq -r '.disallowed | join(", ")' <<<"$classes")"
+            exit 1
+          fi
+          mapfile -t posts < <(jq -r '.posts[]' <<<"$classes")
+          [ "${#posts[@]}" -gt 0 ] || { echo "::error::No post in this PR (src/content/posts/*.md or .mdx)"; exit 1; }
+          verdict=$(node scripts/blog-schedule.mjs check "${posts[@]/#/pr/}" 2>&1) || { echo "::error::$verdict"; exit 1; }
+          echo "due-at=$(jq -r .dueAt <<<"$verdict")" >> "$GITHUB_OUTPUT"
+          echo "due=$(jq -r .due <<<"$verdict")" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Scheduled blog PR"
+            printf -- '- %s\n' "${posts[@]}"
+            echo "- publishes at $(jq -r .dueAt <<<"$verdict")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  comment:
+    needs: check
+    # Fork PRs get a read-only token; the check result is enough for them.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Keep one "publishes at" comment up to date
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          DUE_AT: ${{ needs.check.outputs.due-at }}
+          DUE: ${{ needs.check.outputs.due }}
+        run: |
+          set -euo pipefail
+          marker='<!-- blog-schedule -->'
+          local_time=$(TZ=America/Chicago date -d "$DUE_AT" '+%a %Y-%m-%d %H:%M %Z')
+          if [ "$DUE" = true ]; then
+            when="**Due now** ($local_time). It merges and publishes on the next hourly run."
+          else
+            when="Publishes **$local_time** ($DUE_AT), merged and released automatically within about an hour of that time."
+          fi
+          body=$(printf '%s\n%s\n\n%s' "$marker" "$when" "Remove the \`blog:scheduled\` label to stop it. The date comes from the post front matter.")
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$body" > /dev/null
+          fi

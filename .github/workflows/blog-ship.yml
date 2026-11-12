@@ -1,0 +1,49 @@
+name: Ship scheduled blog PRs
+
+# Merges open PRs labelled `blog:scheduled` once every post in them is due (the
+# post's front matter `date`), then tags the next patch release and starts the
+# Release workflow, but only when main holds nothing except blog content since
+# the last release. Otherwise it merges, stops, and fails so a human releases.
+# When nothing merges it starts *Publish scheduled posts* so released posts that
+# became due go live now.
+#
+# Started hourly by n8n (flow.dgvigil.dev, workflow "ChicanoDev Blog Scheduler")
+# with workflow_dispatch, because GitHub's own cron skips most runs. The cron
+# below is only a backup. Rules: scripts/blog-schedule.mjs. Glue:
+# scripts/ci/blog-ship.sh.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */6 * * *'
+
+permissions: {}
+
+concurrency:
+  group: blog-ship
+  cancel-in-progress: false
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write       # push the release tag
+      pull-requests: write  # merge the PR
+      actions: write        # start staging, release and publish workflows
+    steps:
+      - name: Checkout main (full history and tags)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Merge due PRs and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/ci/blog-ship.sh

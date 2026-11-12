@@ -4,7 +4,7 @@
 // CLI below; the rules themselves are the pure functions, unit-tested in
 // blog-schedule.test.mjs.
 //
-//   node scripts/blog-schedule.mjs check <post.md>...        # validate, print {dueAt}
+//   node scripts/blog-schedule.mjs check [--now ISO] <post.md>...  # validate, print {dueAt, due}
 //   node scripts/blog-schedule.mjs classify   < paths.txt    # print {posts, disallowed}
 //   node scripts/blog-schedule.mjs releasable < paths.txt    # print {ok, blocking}
 //   node scripts/blog-schedule.mjs next-tag   < tags.txt     # print vX.Y.Z+1
@@ -76,8 +76,11 @@ const stdinLines = () =>
 function main([command, ...args]) {
   switch (command) {
     case 'check': {
-      const due = dueAt(args.map((f) => fs.readFileSync(f, 'utf8')));
-      return { dueAt: due.toISOString() };
+      const i = args.indexOf('--now');
+      const now = i >= 0 ? new Date(args[i + 1]) : new Date();
+      const files = i >= 0 ? args.filter((_, j) => j !== i && j !== i + 1) : args;
+      const due = dueAt(files.map((f) => fs.readFileSync(f, 'utf8')));
+      return { dueAt: due.toISOString(), due: isDue(due, now) };
     }
     case 'classify':
       return classifyChanges(stdinLines());
