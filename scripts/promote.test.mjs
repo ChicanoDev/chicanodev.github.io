@@ -29,6 +29,13 @@ function sandbox() {
   for (const p of ['scripts/deploy-state.mjs', 'scripts/published-posts.mjs', 'scripts/ci/promote.sh', 'src/lib/publishing.ts', 'deploy/k8s/overlays']) {
     copy(p, path.join(work, p));
   }
+  // Start from "nothing deployed", whatever the real overlays hold today. The
+  // tests must not depend on live state: the first real release made this
+  // repo's production release.json non-empty and broke the plan test.
+  for (const env of ['staging', 'production']) {
+    const empty = { ref: null, commit: '', buildNow: '', digest: D('0'), published: [] };
+    fs.writeFileSync(path.join(work, 'deploy/k8s/overlays', env, 'release.json'), `${JSON.stringify(empty, null, 2)}\n`);
+  }
   git(work, 'add', '-A');
   git(work, 'commit', '-q', '-m', 'seed');
   git(work, 'push', '-q', 'origin', 'HEAD:main');

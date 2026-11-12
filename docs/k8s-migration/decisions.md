@@ -144,5 +144,72 @@ it records what actually happened, including the mistakes. Newest at the bottom.
   broke the rejected-push test's setup (not the logic under test).
 - Two live problems on the old site: `www` has no TLS certificate on GitHub Pages,
   and `http://` does not redirect.
-- Unverified: whether the Cloudflare token behind cert-manager covers the
-  `chicanodev.com` zone. First thing staging will tell us.
+- Cloudflare token behind cert-manager, checked read-only: valid, no expiry,
+  account-owned, sees `chicanodev.com` and reads its DNS. Two things stay
+  unproven: that it can *edit* DNS there (only a write would prove it; the first
+  staging certificate will) and the zone's SSL mode / Authenticated Origin Pulls
+  (the token is DNS-only and cannot read settings, so that is a dashboard check).
+  Also found: MX and DKIM/SPF records share the zone, so the cutover must leave
+  them alone. *Resolved later:* the staging certificate proved `DNS:Edit`, and
+  Dave confirmed Full (strict) and AOP in the dashboard.
+- **Staging sat broken for a week and nobody noticed.** The basic-auth Secret was
+  never created, so Traefik dropped the route and staging answered 404. Fail-closed
+  did its job (nothing leaked), but "Synced/Healthy" in Argo and 2/2 Ready pods
+  said nothing about whether the site was *reachable*. That is the clearest
+  argument so far for the deferred monitoring: one external HTTP check would have
+  caught it the same day.
+- **GitHub skips scheduled runs.** The hourly `publish.yml` cron actually ran about
+  every 8 hours. "Hourly" in a workflow file is a request, not a promise.
+- **The `http://` gap at cutover.** Pointing proxied DNS at the cluster before
+  turning on Always Use HTTPS made every `http://` URL return 404 for a few
+  minutes (Traefik's port-80 entrypoint has no router for the site), including
+  `chicanodev.github.io` links, which Pages redirects to `http://`. Flip the zone
+  setting first.
+
+## 2026-11-12: Production cutover
+
+- **Order mattered:** release first (`v1.0.0`), then apply the production Argo app,
+  then DNS. Applying the app before a release would have deployed the placeholder
+  digest and sat in `ImagePullBackOff`.
+- **Certificates before DNS.** DNS-01 lets cert-manager issue the apex and `www`
+  certificates while DNS still points at GitHub Pages, so there was no window with
+  a missing certificate.
+- **Proving parity without DNS:** a `kubectl port-forward` to the production Service
+  and a diff against the live Pages site (sitemap URLs, RSS links, a post's
+  `<article>` hash). All identical.
+- **DNS changed through the API with cert-manager's token** (Dave's explicit OK),
+  patching the 4 apex A records and the `www` CNAME in place and saving the
+  before-state first. That token cannot change zone settings, so Always Use HTTPS
+  was a dashboard toggle. Using a cert-manager credential for a one-off is a
+  shortcut, not a pattern; a separate, scoped token would be the clean way.
+- **Both old-site problems are fixed:** `www` now has a certificate (and redirects
+  to the apex) and `http://` redirects to `https://`.
+- Pages is left deployed as the fallback; see [cutover.md](cutover.md).
+
+## 2026-11-12: Scheduled blog PRs, with n8n as the clock
+
+- **Problem:** GitHub's hourly cron ran about every 8h, and production only
+  changes on a release, so a scheduled post needed a manual release *and* a
+  punctual cron.
+- **Design:** a PR labelled `blog:scheduled` holds the post until its date. The
+  post's front matter `date` is the only schedule (no second date in the label or
+  PR body to drift). At the date, *Ship scheduled blog PRs* merges it and tags the
+  next patch release.
+- **n8n is only the clock.** It calls `workflow_dispatch` hourly with a
+  fine-grained token that can start and read Actions runs and nothing else, then
+  reports failures to Mattermost. Every decision lives in tested code in this repo
+  (`scripts/blog-schedule.mjs`); the merge, the tag and the deploy use the
+  workflow's own short-lived `GITHUB_TOKEN`.
+- **Automatic releases only for content.** If anything except posts, their
+  assets, docs or the bot's overlay commits changed since the last tag, the PR is
+  merged but not released, and the run fails so a human releases. An automated
+  job must never ship untested code just because a post came due.
+- **Small but real traps:** pushes and tags made with `GITHUB_TOKEN` start no
+  workflows, so the job starts staging and release itself with
+  `workflow_dispatch`; `--match-head-commit` stops a push made after the checks
+  from being merged unchecked; the PR check reads its rules from the base commit,
+  so a PR cannot edit the script that judges it.
+- **A test that read live state broke silently.** The `promote` integration test
+  copied the real overlays into its sandbox and assumed production was empty. The
+  first real release (`v1.0.0`) made it false, and since bot commits skip CI, no
+  run noticed until this branch. Tests now seed their own state.
