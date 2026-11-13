@@ -14,4 +14,4 @@ resources:
 
 images:
   - name: ghcr.io/chicanodev/chicanodev-site
-    digest: sha256:37ae1e599517e5d31baf6923c569102598107157b9ffb6c8eeda46c668872799
+    digest: sha256:e488cf9a8b45a9662fb6b646eadd591f742edf796f0400721b089799fe6f6cbe
