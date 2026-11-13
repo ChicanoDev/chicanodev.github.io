@@ -66,6 +66,23 @@ export function nextPatch(tags) {
   return `v${major}.${minor}.${patch + 1}`;
 }
 
+const GREEN = new Set(['SUCCESS', 'SKIPPED', 'NEUTRAL']);
+
+/**
+ * True when every check on the PR head finished green. Only the latest run of
+ * each check counts: label events re-trigger workflows and concurrency cancels
+ * the earlier run, but GitHub keeps that CANCELLED run in the rollup.
+ */
+export function checksGreen(rollup) {
+  const latest = new Map();
+  for (const c of rollup) {
+    const key = `${c.workflowName ?? ''}\u0000${c.name ?? c.context ?? ''}`;
+    const prev = latest.get(key);
+    if (!prev || (c.startedAt ?? '') >= (prev.startedAt ?? '')) latest.set(key, c);
+  }
+  return latest.size > 0 && [...latest.values()].every((c) => GREEN.has(c.conclusion ?? c.state ?? ''));
+}
+
 const stdinLines = () =>
   fs
     .readFileSync(0, 'utf8')
@@ -88,8 +105,11 @@ function main([command, ...args]) {
       return releasable(stdinLines());
     case 'next-tag':
       return nextPatch(stdinLines());
+    case 'checks-green':
+      // stdin: `gh pr view N --json statusCheckRollup` output
+      return checksGreen(JSON.parse(fs.readFileSync(0, 'utf8')).statusCheckRollup ?? []);
     default:
-      throw new Error('usage: blog-schedule.mjs check <files...> | classify | releasable | next-tag');
+      throw new Error('usage: blog-schedule.mjs check <files...> | classify | releasable | next-tag | checks-green');
   }
 }
 

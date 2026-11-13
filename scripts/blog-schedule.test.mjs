@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classifyChanges, dueAt, isDue, nextPatch, releasable } from './blog-schedule.mjs';
+import { checksGreen, classifyChanges, dueAt, isDue, nextPatch, releasable } from './blog-schedule.mjs';
 
 const post = (date, extra = '') => `---\ntitle: "T"\ndate: ${date}\ndescription: "d"\n${extra}---\n\nBody\n`;
 
@@ -89,4 +89,38 @@ test('nextPatch: highest strict vX.Y.Z wins, numerically, others ignored', () =>
 
 test('nextPatch: no release yet means there is nothing to patch', () => {
   assert.throws(() => nextPatch(['latest']), /no release/i);
+});
+
+// --- are the PR's checks green? ---------------------------------------------
+
+const run = (name, conclusion, startedAt, workflowName = 'Scheduled blog PR check') => ({
+  __typename: 'CheckRun', workflowName, name, status: 'COMPLETED', conclusion, startedAt,
+});
+
+test('checksGreen: every check finished green (skipped and neutral count)', () => {
+  assert.equal(checksGreen([run('check', 'SUCCESS', 't1'), run('test', 'SKIPPED', 't1', 'CI'), run('lint', 'NEUTRAL', 't1', 'CI')]), true);
+});
+
+test('checksGreen: a failing, pending or empty rollup is not green', () => {
+  assert.equal(checksGreen([run('check', 'SUCCESS', 't1'), run('test', 'FAILURE', 't1', 'CI')]), false);
+  assert.equal(checksGreen([{ ...run('test', '', 't1', 'CI'), status: 'IN_PROGRESS', conclusion: null }]), false);
+  assert.equal(checksGreen([{ __typename: 'StatusContext', context: 'ext', state: 'PENDING' }]), false);
+  assert.equal(checksGreen([]), false);
+});
+
+// Regression (PR #10): `gh pr create --label` fires "opened" and "labeled";
+// the first check run is cancelled by concurrency, the second succeeds. The
+// rollup keeps both, and the stale CANCELLED run blocked the merge forever.
+test('checksGreen: a run superseded by a later run of the same check is ignored', () => {
+  const rollup = [
+    run('check', 'CANCELLED', '2026-11-13T16:15:17Z'),
+    run('comment', 'CANCELLED', '2026-11-13T16:15:19Z'),
+    run('check', 'SUCCESS', '2026-11-13T16:15:25Z'),
+    run('comment', 'SUCCESS', '2026-11-13T16:15:40Z'),
+  ];
+  assert.equal(checksGreen(rollup), true);
+  // ...but the latest run decides, in either direction.
+  assert.equal(checksGreen([run('check', 'SUCCESS', 't1'), run('check', 'FAILURE', 't2')]), false);
+  // A cancellation that was never re-run still blocks.
+  assert.equal(checksGreen([run('check', 'CANCELLED', 't1')]), false);
 });
