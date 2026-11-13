@@ -30,10 +30,9 @@ while IFS=$'\t' read -r -u 3 number sha author cross title; do
   fi
 
   # Every check on the head commit must have finished green (none pending).
-  # shellcheck disable=SC2016 # $c is a jq variable, not a shell one
-  if ! gh pr view "$number" --json statusCheckRollup --jq '
-      [.statusCheckRollup[] | (.conclusion // .state // "")] as $c
-      | ($c | length) > 0 and all($c[]; . == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL")' | grep -qx true; then
+  # Only the latest run of each check counts (see checksGreen).
+  if ! gh pr view "$number" --json statusCheckRollup \
+      | node scripts/blog-schedule.mjs checks-green | grep -qx true; then
     say "- $pr: waiting, checks are not all green yet"; continue
   fi
 
